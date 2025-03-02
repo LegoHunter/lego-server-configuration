@@ -7,6 +7,7 @@
 5. Add README
 6. Click `Create Repository`
 7. **_Ensure repository is Public, or github actions vars and secrets will not work_**
+7. Click Create Repository 
 7. Create `develop` branch by clicking `main` branch dropdown and select `Create develop from main`
 8. Click Repository `Settings` on main toolbar
 9. Edit the Default branch to be develop 
@@ -18,9 +19,9 @@
 15. Artifact `<service-name>`
 16. Update `Description`
 17. Update `Package name`
-18. Java `21`
+18. Java `22`
 19. Add Dependencies: `Lombok`, `Spring Configuration Processor`, `Spring Web`, `Spring Security`, `MyBatis Framework`, `MySQL Driver`, `Spring Boot Actuator`, `Distributed Tracing`, `Zipkin`, `Resilience4J`
-20. Shortcut : https://start.spring.io/#!type=maven-project&language=java&platformVersion=3.3.4&packaging=jar&jvmVersion=21&groupId=net.legohunter&artifactId=sandbox-service&name=sandbox-service&description=Demo%20project%20for%20Spring%20Boot&packageName=net.legohunter.sandbox.service&dependencies=lombok,configuration-processor,web,security,mybatis,mysql,actuator,distributed-tracing,zipkin,cloud-resilience4j
+20. Shortcut : https://start.spring.io/#!type=maven-project&language=java&platformVersion=3.3.9&packaging=jar&jvmVersion=21&groupId=net.legohunter&artifactId=sandbox-service&name=sandbox-service&description=Demo%20project%20for%20Spring%20Boot&packageName=net.legohunter.sandbox.service&dependencies=lombok,configuration-processor,web,security,mybatis,mysql,actuator,distributed-tracing,zipkin,cloud-resilience4j
 21. Click `Generate`
 22. Expand downloaded zip file into cloned directory from previous step.
 23. In IntelliJ, expand new module folder, and right-click `pom.xml` and select `Import As Maven Project`
@@ -93,7 +94,7 @@ May have to change `@SpringBootApplication` to:
 36. On Windows machine, run the following commands:
 ```shell
 cd to root of repository
-kubectl apply -f .\kubernetes\deployment.yml
-kubectl apply -f .\kubernetes\lb-service.yml
+kubectl apply -f .\kubernetes\deployment.yml --namespace sandbox
+kubectl apply -f .\kubernetes\lb-service.yml --namespace sandbox
 ```
 Application should now be running in Kubernetes cluster on port defined in `lb-service.yml`

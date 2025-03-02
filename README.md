@@ -14,6 +14,8 @@ https://github.com/organizations/LegoHunter/settings/actions/runners/new?arch=ar
 https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/monitoring-and-troubleshooting-self-hosted-runners
 
 ```shell
+su github-runner
 cd /etc/actions-runner
+./config --check --url https://github.com/LegoHunter/<repo-name>
 ```
 
