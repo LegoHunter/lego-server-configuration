@@ -1,0 +1,19 @@
+meta {
+  name: catalog search
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://www.bricklink.com/ajax/clone/catalogifs.ajax?itemid=261245&cond=N&minqty=1&rpp=500&iconly=0
+  body: none
+  auth: none
+}
+
+params:query {
+  itemid: 261245
+  cond: N
+  minqty: 1
+  rpp: 500
+  iconly: 0
+}

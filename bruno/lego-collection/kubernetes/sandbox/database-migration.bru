@@ -1,0 +1,18 @@
+meta {
+  name: database-migration
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8080/api/v1/migration/database
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "sourceDataSourceKey": "rasppi5-01-lego-prod-legacy",
+    "targetDataSourceKey": "rasppi5-01-lego-sandbox"
+  }
+}
