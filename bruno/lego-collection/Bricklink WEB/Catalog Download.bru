@@ -1,0 +1,23 @@
+meta {
+  name: Catalog Download
+  type: http
+  seq: 1
+}
+
+post {
+  url: https://www.bricklink.com/catalogDownload.asp?a=a
+  body: formUrlEncoded
+  auth: none
+}
+
+params:query {
+  a: a
+}
+
+body:form-urlencoded {
+  viewType: 0
+  itemType: B
+  itemTypeInv: S
+  itemNo: 
+  downloadType: X
+}

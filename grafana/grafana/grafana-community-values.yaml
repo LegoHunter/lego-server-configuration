@@ -1,0 +1,41 @@
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server:9090
+        access: proxy
+        isDefault: false
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway:3100
+        isDefault: true
+
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+        secureJsonData:
+          httpHeaderValue1: legohunter.io
+
+ingress:
+  enabled: true
+
+  ingressClassName: traefik
+
+  annotations: {}
+  # Do NOT set kubernetes.io/ingress.class unless you have a reason
+
+  hosts:
+    - console.grafana.internal.legohunter.io
+
+  path: /
+  pathType: Prefix
+
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - console.grafana.internal.legohunter.io
+
+adminUser: admin
+adminPassword: admin

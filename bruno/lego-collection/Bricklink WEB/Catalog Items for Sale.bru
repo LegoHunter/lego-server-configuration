@@ -1,0 +1,17 @@
+meta {
+  name: Catalog Items for Sale
+  type: http
+  seq: 3
+}
+
+get {
+  url: https://www.bricklink.com/ajax/clone/catalogifs.ajax?itemid=261245&rpp=500&iconly=0
+  body: none
+  auth: none
+}
+
+params:query {
+  itemid: 261245
+  rpp: 500
+  iconly: 0
+}
