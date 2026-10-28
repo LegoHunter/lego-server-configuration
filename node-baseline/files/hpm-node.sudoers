@@ -1,0 +1,2 @@
+# HPM (homelab-power-manager) may only power this host off.
+hpm-node ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff

@@ -1,0 +1,8 @@
+[Unit]
+Description=Recover a Raspberry Pi 5 from a macb Ethernet TX stall
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rpi5-net-watchdog
