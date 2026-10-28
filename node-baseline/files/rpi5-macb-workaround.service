@@ -1,0 +1,13 @@
+[Unit]
+Description=Raspberry Pi 5 macb Ethernet TX stall workaround
+After=network-online.target
+Wants=network-online.target
+Before=k3s.service k3s-node.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ethtool --features eth0 tso off sg off
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

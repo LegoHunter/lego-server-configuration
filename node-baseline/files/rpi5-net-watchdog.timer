@@ -1,0 +1,10 @@
+[Unit]
+Description=Check every 30 s for a Raspberry Pi 5 macb Ethernet TX stall
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
