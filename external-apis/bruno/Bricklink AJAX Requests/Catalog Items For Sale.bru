@@ -1,0 +1,19 @@
+meta {
+  name: Catalog Items For Sale
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{bricklink_ajax_base_url}}/ajax/clone/catalogifs.ajax?itemid=4997&cond=U&minqty=1&rpp=500&iconly=0
+  body: none
+  auth: none
+}
+
+params:query {
+  itemid: 4997
+  cond: U
+  minqty: 1
+  rpp: 500
+  iconly: 0
+}

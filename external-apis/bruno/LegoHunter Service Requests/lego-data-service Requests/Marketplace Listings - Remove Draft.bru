@@ -1,0 +1,15 @@
+meta {
+  name: Marketplace Listings - Remove Draft
+  type: http
+  seq: 32
+}
+
+delete {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings/6000
+  body: none
+  auth: none
+}
+
+params:path {
+  marketplaceListingId: 6000
+}

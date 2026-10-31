@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Flickr API Requests",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

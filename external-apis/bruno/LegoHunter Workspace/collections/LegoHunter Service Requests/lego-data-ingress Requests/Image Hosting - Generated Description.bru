@@ -1,0 +1,20 @@
+meta {
+  name: Image Hosting - Generated Description
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{lego_data_ingress_base_url}}/internal/image-hosting/item-inventories/100/generated-description?provider=flickr
+  body: none
+  auth: none
+}
+
+params:path {
+  itemInventoryId: 100
+}
+
+params:query {
+  provider: flickr
+  ~externalServiceId: 10
+}

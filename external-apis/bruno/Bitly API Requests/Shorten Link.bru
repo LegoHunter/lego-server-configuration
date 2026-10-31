@@ -1,0 +1,24 @@
+meta {
+  name: Shorten Link
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{bitly_base_url}}/shorten
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{bitly_access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "group_guid": "{{bitly_group_guid}}",
+    "domain": "{{bitly_domain}}",
+    "long_url": "{{bitly_long_url}}"
+  }
+}

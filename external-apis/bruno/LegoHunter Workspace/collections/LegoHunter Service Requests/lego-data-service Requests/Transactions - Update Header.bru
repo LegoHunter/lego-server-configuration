@@ -1,0 +1,26 @@
+meta {
+  name: Transactions - Update Header
+  type: http
+  seq: 18
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000
+  body: json
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+}
+
+body:json {
+  {
+    "transactionDate": "2026-07-28",
+    "fromPartyId": 1,
+    "toPartyId": 2,
+    "transactionPlatformName": "Bricklink",
+    "transactionOrderId": "BL-EXAMPLE-001",
+    "notes": "Corrected transaction header."
+  }
+}

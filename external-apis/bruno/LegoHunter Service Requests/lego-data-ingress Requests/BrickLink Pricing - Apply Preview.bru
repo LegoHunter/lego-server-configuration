@@ -1,0 +1,17 @@
+meta {
+  name: BrickLink Pricing - Apply Preview
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{lego_data_ingress_base_url}}/internal/bricklink/pricing/apply-preview?limit=100
+  body: none
+  auth: none
+}
+
+params:query {
+  limit: 100
+  ~readinessStatusCode: READY
+  ~blockReasonCode: MISSING_REMOTE_INVENTORY_ID_FOR_LOCAL_DRAFT
+}

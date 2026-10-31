@@ -1,0 +1,20 @@
+meta {
+  name: Catalog - Get Subsets
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{bricklink_rest_base_url}}/items/{{bricklink_item_type}}/{{bricklink_item_no}}/subsets?instruction=true&break_minifigs=false
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{bricklink_consumer_key}}", oauth_token="{{bricklink_token_value}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{bricklink_oauth_timestamp}}", oauth_nonce="{{bricklink_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{bricklink_oauth_signature}}"
+}
+
+params:query {
+  instruction: true
+  break_minifigs: false
+}

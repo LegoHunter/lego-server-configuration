@@ -1,0 +1,21 @@
+meta {
+  name: Upload - Replace Photo
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{flickr_upload_base_url}}/replace/
+  body: multipart-form
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{flickr_api_key}}", oauth_token="{{flickr_oauth_token}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{flickr_oauth_timestamp}}", oauth_nonce="{{flickr_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{flickr_oauth_signature}}"
+}
+
+body:multipart-form {
+  photo_id: {{flickr_photo_id}}
+  async: 0
+  photo: @{{flickr_photo_file_path}}
+}

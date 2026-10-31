@@ -1,0 +1,22 @@
+meta {
+  name: Image Hosting - Direct Sync
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{lego_data_ingress_base_url}}/internal/image-hosting/item-inventories/100/sync?provider=flickr&dryRun=true&retryFailed=false
+  body: none
+  auth: none
+}
+
+params:path {
+  itemInventoryId: 100
+}
+
+params:query {
+  provider: flickr
+  dryRun: true
+  retryFailed: false
+  ~externalServiceId: 10
+}

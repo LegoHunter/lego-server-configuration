@@ -1,0 +1,43 @@
+meta {
+  name: Inventory - Create Or Replace Inventory Item
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{ebay_api_base_url}}/sell/inventory/v1/inventory_item/{{ebay_inventory_sku}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ebay_access_token}}
+  Content-Type: application/json
+  Content-Language: en-US
+}
+
+body:json {
+  {
+    "availability": {
+      "shipToLocationAvailability": {
+        "quantity": 1
+      }
+    },
+    "condition": "USED_EXCELLENT",
+    "product": {
+      "title": "LEGO 6390-1 Main Street",
+      "description": "Example eBay inventory item payload for future LegoHunter marketplace integration.",
+      "aspects": {
+        "Brand": [
+          "LEGO"
+        ],
+        "LEGO Set Number": [
+          "6390"
+        ]
+      },
+      "imageUrls": [
+        "https://example.com/lego-6390-front.jpg"
+      ]
+    }
+  }
+}

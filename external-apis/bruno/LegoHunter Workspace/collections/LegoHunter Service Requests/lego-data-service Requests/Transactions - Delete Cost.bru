@@ -1,0 +1,16 @@
+meta {
+  name: Transactions - Delete Cost
+  type: http
+  seq: 21
+}
+
+delete {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000/costs/2000
+  body: none
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+  transactionCostId: 2000
+}

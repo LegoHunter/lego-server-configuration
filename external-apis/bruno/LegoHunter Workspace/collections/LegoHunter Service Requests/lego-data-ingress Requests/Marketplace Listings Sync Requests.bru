@@ -1,0 +1,30 @@
+meta {
+  name: Marketplace Listings Sync Requests
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "itemInventoryId": 18098,
+    "marketplaceCode": "BRICKLINK",
+    "externalCatalogitemId": 37326,
+    "title": "Main Street",
+    "description": "Sandbox listing create test for 6390-1. Stockroom only.",
+    "privateNotes": "sandbox listing cerate smoke test",
+    "unitPrice": 184.37,
+    "currencyCode": "USD",
+    "fixedPrice": false,
+    "bricklink": {
+      "bulk": 1,
+      "isRetain": false,
+      "remarks": "Sandbox LISTING_CREATE smoke test"
+    }  
+  }
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Marketplace Listings - Cancel Sync Request
+  type: http
+  seq: 37
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings/sync-requests/7000/cancel
+  body: json
+  auth: none
+}
+
+params:path {
+  marketplaceListingSyncRequestId: 7000
+}
+
+body:json {
+  {
+    "reason": "Cancel Bruno test sync request."
+  }
+}

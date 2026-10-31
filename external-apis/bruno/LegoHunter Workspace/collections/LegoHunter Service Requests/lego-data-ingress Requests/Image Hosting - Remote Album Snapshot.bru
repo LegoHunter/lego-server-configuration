@@ -1,0 +1,23 @@
+meta {
+  name: Image Hosting - Remote Album Snapshot
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{lego_data_ingress_base_url}}/internal/image-hosting/remote/albums/{{flickr_photoset_id}}/snapshot?provider=flickr&albumPageSize=500&photoPageSize=500
+  body: none
+  auth: none
+}
+
+params:path {
+  albumId: {{flickr_photoset_id}}
+}
+
+params:query {
+  provider: flickr
+  albumPageSize: 500
+  photoPageSize: 500
+  ~externalServiceId: 10
+  ~userId: {{flickr_user_id}}
+}

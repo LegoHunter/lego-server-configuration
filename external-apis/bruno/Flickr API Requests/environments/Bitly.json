@@ -1,0 +1,41 @@
+{
+    "name":  "Bitly",
+    "variables":  [
+                      {
+                          "name":  "bitly_base_url",
+                          "secret":  false,
+                          "value":  "https://api-ssl.bitly.com/v4",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bitly_group_guid",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bitly_domain",
+                          "secret":  false,
+                          "value":  "bit.ly",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bitly_long_url",
+                          "secret":  false,
+                          "value":  "https://legohunter.io",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bitly_bitlink_id",
+                          "secret":  false,
+                          "value":  "bit.ly/example",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bitly_access_token",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      }
+                  ]
+}

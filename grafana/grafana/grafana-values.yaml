@@ -1,0 +1,32 @@
+grafana:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 3000
+
+  ingress:
+    enabled: false
+
+  grafana.ini:
+    server:
+      root_url: https://console.grafana.internal.legohunter.io
+      serve_from_sub_path: true
+
+  # Admin credentials
+  adminUser: tvattima
+  # adminPassword is not committed. Pass it at install/upgrade time:
+  #   helm upgrade ... --set adminPassword="$GRAFANA_ADMIN_PASSWORD"
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki-gateway:3100
+          isDefault: true
+          jsonData:
+            httpHeaderName1: "X-Scope-OrgID"
+          secureJsonData:
+            httpHeaderValue1: "legohunter.io"

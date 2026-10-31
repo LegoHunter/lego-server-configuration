@@ -1,0 +1,20 @@
+# traefik-route.yaml — copy-paste this file
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: infisical-ingress
+  namespace: infisical
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`infisical.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - kind: Service
+          name: infisical-standalone
+          port: 80
+  tls:
+    secretName: infisical-tls

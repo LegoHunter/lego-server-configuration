@@ -1,0 +1,25 @@
+meta {
+  name: Inventory - Update Inventory
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{bricklink_rest_base_url}}/inventories/{{bricklink_inventory_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: OAuth oauth_consumer_key="{{bricklink_consumer_key}}", oauth_token="{{bricklink_token_value}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{bricklink_oauth_timestamp}}", oauth_nonce="{{bricklink_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{bricklink_oauth_signature}}"
+}
+
+body:json {
+  {
+    "unit_price": 199.95,
+    "is_stock_room": true,
+    "stock_room_id": "C",
+    "remarks": "legoHunterEnv=local;source=bruno-example"
+  }
+}

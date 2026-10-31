@@ -1,0 +1,19 @@
+meta {
+  name: Photosets - Get List
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{flickr_rest_base_url}}/?method=flickr.photosets.getList&api_key={{flickr_api_key}}&user_id={{flickr_user_id}}&format=json&nojsoncallback=1
+  body: none
+  auth: none
+}
+
+params:query {
+  method: flickr.photosets.getList
+  api_key: {{flickr_api_key}}
+  user_id: {{flickr_user_id}}
+  format: json
+  nojsoncallback: 1
+}

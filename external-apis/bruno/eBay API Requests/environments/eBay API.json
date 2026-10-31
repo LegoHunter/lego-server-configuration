@@ -1,0 +1,71 @@
+{
+    "name":  "eBay API",
+    "variables":  [
+                      {
+                          "name":  "ebay_api_base_url",
+                          "secret":  false,
+                          "value":  "https://api.ebay.com",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_oauth_base_url",
+                          "secret":  false,
+                          "value":  "https://api.ebay.com",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_marketplace_id",
+                          "secret":  false,
+                          "value":  "EBAY_US",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_scope",
+                          "secret":  false,
+                          "value":  "https://api.ebay.com/oauth/api_scope",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_search_query",
+                          "secret":  false,
+                          "value":  "Lego 6390",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_item_id",
+                          "secret":  false,
+                          "value":  "v1|110000000000|0",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_inventory_sku",
+                          "secret":  false,
+                          "value":  "LEGO-6390-1-EXAMPLE",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_client_id",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_client_secret",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_client_credentials_basic",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_access_token",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      }
+                  ]
+}

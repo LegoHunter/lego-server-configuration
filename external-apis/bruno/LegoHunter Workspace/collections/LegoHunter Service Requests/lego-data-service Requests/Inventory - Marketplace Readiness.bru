@@ -1,0 +1,15 @@
+meta {
+  name: Inventory - Marketplace Readiness
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/18097/marketplace-readiness?marketplaceCode=BRICKLINK
+  body: none
+  auth: none
+}
+
+params:query {
+  marketplaceCode: BRICKLINK
+}

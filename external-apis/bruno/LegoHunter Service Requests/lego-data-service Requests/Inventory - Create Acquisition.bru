@@ -1,0 +1,72 @@
+meta {
+  name: Inventory - Create Acquisition
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/inventory
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "transactionDate": "2026-07-28",
+    "fromPartyId": 1,
+    "toPartyId": 2,
+    "transactionPlatformName": "Bricklink",
+    "notes": "Example LEGO Item Acquisition from Bruno.",
+    "inventoryItems": [
+      {
+        "itemNumber": "6390-1",
+        "description": "Main Street",
+        "boxNumber": 12,
+        "newOrUsed": "U",
+        "completeness": "C",
+        "sealed": false,
+        "builtOnce": true,
+        "itemConditionCode": "VG",
+        "boxConditionCode": "G",
+        "instructionsConditionCode": "VG",
+        "transactionTypeCode": "P",
+        "costs": [
+          {
+            "costTypeCode": "PRICE",
+            "amount": 184.37,
+            "currencyCode": "USD",
+            "notes": "Item purchase price."
+          },
+          {
+            "costTypeCode": "FEE",
+            "amount": 6.25,
+            "currencyCode": "USD",
+            "notes": "Seller handling fee allocated to this item."
+          }
+        ],
+        "forSale": false,
+        "quantity": 1,
+        "active": true
+      }
+    ],
+    "costs": [
+      {
+        "costTypeCode": "SHIPPING",
+        "amount": 12.00,
+        "currencyCode": "USD",
+        "notes": "Transaction-level shipping charge."
+      }
+    ],
+    "payments": [
+      {
+        "paymentDate": "2026-07-28",
+        "currencyCode": "USD",
+        "sellerCurrencyCode": "USD",
+        "exchangeRate": 1.0,
+        "amount": 202.62,
+        "paymentPlatformName": "PayPal",
+        "paymentPlatformTransactionId": "PAYPAL-BRUNO-EXAMPLE-001"
+      }
+    ]
+  }
+}

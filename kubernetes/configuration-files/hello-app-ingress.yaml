@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello-app-ingress
+  namespace: dev
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - legohunter.io
+    secretName: hello-app-tls
+  rules:
+  - host: "legohunter.io"
+    http:
+      paths:
+        - pathType: Prefix
+          path: "/"
+          backend:
+            service:
+              name: hello-service
+              port:
+                number: 8090

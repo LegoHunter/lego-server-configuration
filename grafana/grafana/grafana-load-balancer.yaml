@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-grafana
+  namespace: traefik
+  annotations:
+    metallb.universe.tf/address-pool: first-pool   # corrected pool name
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.0.2.85   # static IP inside your MetalLB pool
+  selector:
+    app.kubernetes.io/name: traefik
+  ports:
+    - name: websecure-grafana
+      port: 443
+      targetPort: 9443   # must match Traefik entrypoint port

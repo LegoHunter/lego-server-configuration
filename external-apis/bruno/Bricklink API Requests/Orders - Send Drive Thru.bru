@@ -1,0 +1,19 @@
+meta {
+  name: Orders - Send Drive Thru
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{bricklink_rest_base_url}}/orders/{{bricklink_order_id}}/drive_thru?mail_me=true
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{bricklink_consumer_key}}", oauth_token="{{bricklink_token_value}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{bricklink_oauth_timestamp}}", oauth_nonce="{{bricklink_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{bricklink_oauth_signature}}"
+}
+
+params:query {
+  mail_me: true
+}

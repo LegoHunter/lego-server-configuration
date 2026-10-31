@@ -1,0 +1,15 @@
+meta {
+  name: BrickLink Pricing - Apply Selection Dry Run
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{lego_data_ingress_base_url}}/internal/bricklink/pricing/apply-selection/dry-run?limit=100
+  body: none
+  auth: none
+}
+
+params:query {
+  limit: 100
+}

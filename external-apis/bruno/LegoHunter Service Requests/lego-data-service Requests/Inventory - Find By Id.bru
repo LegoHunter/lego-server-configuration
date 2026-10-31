@@ -1,0 +1,15 @@
+meta {
+  name: Inventory - Find By Id
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/100
+  body: none
+  auth: none
+}
+
+params:path {
+  itemInventoryId: 100
+}

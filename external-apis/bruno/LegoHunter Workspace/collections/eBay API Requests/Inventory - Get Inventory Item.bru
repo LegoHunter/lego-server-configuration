@@ -1,0 +1,15 @@
+meta {
+  name: Inventory - Get Inventory Item
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{ebay_api_base_url}}/sell/inventory/v1/inventory_item/{{ebay_inventory_sku}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ebay_access_token}}
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Transactions - Add Cost
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000/costs
+  body: json
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+}
+
+body:json {
+  {
+    "costTypeCode": "SHIPPING",
+    "amount": 12.00,
+    "currencyCode": "USD",
+    "notes": "Transaction-level shipping."
+  }
+}

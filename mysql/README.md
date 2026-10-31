@@ -51,12 +51,22 @@ exit;
 ### Common mysql commandline commands
 
 #### Show all users
-SELECT user FROM mysql.user;
+SELECT user,host FROM mysql.user;
 
-
+#### Show all databases
+SHOW DATABASES;
 
 ### Starting/Stopping/Restarting MySQL
 systemctl status mysql.service
 systemctl stop mysql.service
 systemctl start mysql.service
 systemctl restart mysql.service
+
+### Completely Uninstalling MySQL
+
+# sudo systemctl stop mysql
+# sudo apt purge mysql-server mysql-client mysql-common mysql-server-core-* mysql-client-core-*
+# sudo rm -rf /etc/mysql /var/lib/mysql /var/log/mysql
+# sudo apt autoremove && sudo apt autoclean
+# sudo apt remove dbconfig-mysql
+

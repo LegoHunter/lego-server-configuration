@@ -1,0 +1,25 @@
+meta {
+  name: Upload - Upload Photo
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{flickr_upload_base_url}}/upload/
+  body: multipart-form
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{flickr_api_key}}", oauth_token="{{flickr_oauth_token}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{flickr_oauth_timestamp}}", oauth_nonce="{{flickr_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{flickr_oauth_signature}}"
+}
+
+body:multipart-form {
+  title: {{flickr_photo_title}}
+  description: {{flickr_photo_description}}
+  is_public: 1
+  is_friend: 0
+  is_family: 0
+  hidden: 1
+  photo: @{{flickr_photo_file_path}}
+}

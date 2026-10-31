@@ -1,0 +1,21 @@
+meta {
+  name: Inventory - Get Inventories
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{bricklink_rest_base_url}}/inventories?item_type={{bricklink_item_type}}&item_no={{bricklink_item_no}}&color_id={{bricklink_color_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{bricklink_consumer_key}}", oauth_token="{{bricklink_token_value}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{bricklink_oauth_timestamp}}", oauth_nonce="{{bricklink_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{bricklink_oauth_signature}}"
+}
+
+params:query {
+  item_type: {{bricklink_item_type}}
+  item_no: {{bricklink_item_no}}
+  color_id: {{bricklink_color_id}}
+}

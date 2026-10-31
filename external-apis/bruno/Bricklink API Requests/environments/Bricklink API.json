@@ -1,0 +1,89 @@
+{
+    "name":  "Bricklink API",
+    "variables":  [
+                      {
+                          "name":  "bricklink_rest_base_url",
+                          "secret":  false,
+                          "value":  "https://api.bricklink.com/api/store/v1",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_item_type",
+                          "secret":  false,
+                          "value":  "SET",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_item_no",
+                          "secret":  false,
+                          "value":  "6390-1",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_order_id",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_inventory_id",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_color_id",
+                          "secret":  false,
+                          "value":  "0",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_category_id",
+                          "secret":  false,
+                          "value":  "67",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_oauth_timestamp",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_oauth_nonce",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_oauth_signature",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_consumer_key",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_consumer_secret",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_token_value",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_token_secret",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      }
+                  ]
+}

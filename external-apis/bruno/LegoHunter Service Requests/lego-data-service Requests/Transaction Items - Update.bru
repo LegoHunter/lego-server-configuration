@@ -1,0 +1,22 @@
+meta {
+  name: Transaction Items - Update
+  type: http
+  seq: 25
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/transaction-items/4000
+  body: json
+  auth: none
+}
+
+params:path {
+  transactionItemId: 4000
+}
+
+body:json {
+  {
+    "transactionTypeCode": "P",
+    "notes": "Corrected transaction item notes."
+  }
+}

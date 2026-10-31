@@ -1,0 +1,22 @@
+meta {
+  name: Inventory - Search
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "itemNumber": "6390-1",
+    "saleIntentCode": "SELLABLE",
+    "inventoryStateCode": "AVAILABLE",
+    "boxNumber": 12,
+    "active": true,
+    "limit": 25
+  }
+}

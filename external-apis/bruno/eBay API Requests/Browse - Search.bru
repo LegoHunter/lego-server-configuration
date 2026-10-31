@@ -1,0 +1,21 @@
+meta {
+  name: Browse - Search
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{ebay_api_base_url}}/buy/browse/v1/item_summary/search?q={{ebay_search_query}}&limit=10
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ebay_access_token}}
+  X-EBAY-C-MARKETPLACE-ID: {{ebay_marketplace_id}}
+}
+
+params:query {
+  q: {{ebay_search_query}}
+  limit: 10
+}

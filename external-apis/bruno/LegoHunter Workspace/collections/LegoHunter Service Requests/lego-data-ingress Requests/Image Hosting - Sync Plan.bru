@@ -1,0 +1,23 @@
+meta {
+  name: Image Hosting - Sync Plan
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{lego_data_ingress_base_url}}/internal/image-hosting/item-inventories/100/sync-plan?provider=flickr&albumPageSize=500&photoPageSize=500
+  body: none
+  auth: none
+}
+
+params:path {
+  itemInventoryId: 100
+}
+
+params:query {
+  provider: flickr
+  albumPageSize: 500
+  photoPageSize: 500
+  ~externalServiceId: 10
+  ~userId: {{flickr_user_id}}
+}

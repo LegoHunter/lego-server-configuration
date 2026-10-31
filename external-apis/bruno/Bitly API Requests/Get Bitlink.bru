@@ -1,0 +1,15 @@
+meta {
+  name: Get Bitlink
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{bitly_base_url}}/bitlinks/{{bitly_bitlink_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{bitly_access_token}}
+}

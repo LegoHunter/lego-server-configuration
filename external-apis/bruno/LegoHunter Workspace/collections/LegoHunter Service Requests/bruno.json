@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "LegoHunter Service Requests",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

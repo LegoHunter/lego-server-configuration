@@ -1,0 +1,16 @@
+meta {
+  name: Transactions - Delete Payment
+  type: http
+  seq: 24
+}
+
+delete {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000/payments/3000
+  body: none
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+  paymentId: 3000
+}

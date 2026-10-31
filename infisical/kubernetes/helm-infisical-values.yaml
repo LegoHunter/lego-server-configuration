@@ -1,0 +1,43 @@
+nameOverride: "infisical"
+fullnameOverride: "infisical"
+
+infisical:
+  enabled: true
+  name: infisical
+  autoDatabaseSchemaMigration: true
+  fullnameOverride: ""
+  podAnnotations: { }
+  deploymentAnnotations: { }
+  replicaCount: 2
+
+  image:
+    repository: infisical/infisical
+    tag: "v0.153.3"
+    pullPolicy: IfNotPresent
+
+  affinity: { }
+  kubeSecretRef: "infisical-secrets"
+
+ingress:
+  enabled: false
+  nginx:
+    enabled: false
+
+postgresql:
+  enabled: true
+  name: "postgresql"
+  fullnameOverride: "postgresql"
+  primary:
+    initdb:
+      scripts:
+        00-uuid-ready.sql: |
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+redis:
+  enabled: true
+  name: "redis"
+  fullnameOverride: "redis"
+  cluster:
+    enabled: false
+  architecture: standalone

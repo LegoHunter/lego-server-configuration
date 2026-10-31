@@ -1,0 +1,25 @@
+meta {
+  name: Transactions - Create Legacy
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/transactions
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "transactionDate": "2026-07-28",
+    "fromPartyId": 1,
+    "toPartyId": 2,
+    "notes": "Legacy transaction create endpoint example.",
+    "platformName": "Bricklink",
+    "orderId": "BL-EXAMPLE-001",
+    "transactionItems": [],
+    "payments": [],
+    "costs": []
+  }
+}

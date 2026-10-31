@@ -1,0 +1,15 @@
+meta {
+  name: Transactions - Find Tree
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000
+  body: none
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+}

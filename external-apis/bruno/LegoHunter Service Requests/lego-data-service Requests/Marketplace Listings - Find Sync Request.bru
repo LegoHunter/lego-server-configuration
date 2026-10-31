@@ -1,0 +1,15 @@
+meta {
+  name: Marketplace Listings - Find Sync Request
+  type: http
+  seq: 36
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings/sync-requests/7000
+  body: none
+  auth: none
+}
+
+params:path {
+  marketplaceListingSyncRequestId: 7000
+}

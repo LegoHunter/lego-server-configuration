@@ -1,0 +1,152 @@
+# alloy-values.yaml
+alloy:
+  configMap:
+    create: true
+    content: |-
+      logging {
+        level  = "info"
+        format = "logfmt"
+      }
+
+      // Discover all pods
+      discovery.kubernetes "pods" {
+        role = "pod"
+
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + coalesce(env("HOSTNAME"), constants.hostname)
+        }
+      }
+
+      // Extract ALL Kubernetes metadata
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        // Add namespace
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        // Add pod name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        // Add container name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        // Add node name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+
+        // Add app label (from pod labels)
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          target_label  = "app"
+        }
+
+        // Add component
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_component"]
+          target_label  = "component"
+        }
+
+        // Add job = namespace/app
+        rule {
+          source_labels = ["namespace", "app"]
+          separator     = "/"
+          target_label  = "job"
+        }
+
+        // Set __path__ for log file
+        rule {
+          source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          target_label  = "__path__"
+          replacement   = "/var/log/pods/*$1/*.log"
+        }
+      }
+
+      // Scrape logs from all pods
+      loki.source.kubernetes "k8s_logs" {
+        forward_to = [loki.process.enrich.receiver]
+        targets    = discovery.relabel.pod_logs.output
+      }
+
+      loki.process "enrich" {
+        forward_to = [loki.write.loki.receiver]
+
+        stage.json {
+          expressions = {
+            level    = "level",
+            message  = "message",
+            service  = "service",
+            trace_id = "traceId",
+            time     = "timestamp",
+          }
+        }
+
+        stage.regex {
+          expression = "(?P<time>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d+Z)"
+        }
+
+        stage.template {
+          source   = "kubernetes_namespace"
+          template = "{{`{{ if contains \"dev\" .Value }}dev{{ else if contains \"prod\" .Value }}prod{{ else }}unknown{{ end }}`}}"
+        }
+
+        stage.labels {
+          values = {
+            environment = "kubernetes_namespace",
+          }
+        }
+
+        stage.label_keep {
+          values = [
+            "environment",
+            "namespace",
+            "pod",
+            "container",
+            "node",
+            "app",
+            "component",
+            "job",
+            "level",
+            "service",
+          ]
+        }
+
+        stage.timestamp {
+          source = "time"
+          format = "RFC3339"
+        }
+      }
+
+      loki.write "loki" {
+        endpoint {
+          url = "http://loki-gateway.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+          headers = {
+            "X-Scope-OrgID"="legohunter.io",
+          }
+        }
+      }
+
+  deploymentMode: daemonset
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  rbac:
+    create: true
+  tolerations:
+    - operator: Exists

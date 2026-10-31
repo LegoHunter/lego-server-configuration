@@ -1,0 +1,18 @@
+meta {
+  name: Marketplace Listings - Update Draft
+  type: http
+  seq: 31
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings/8570
+  body: json
+  auth: none
+}
+
+body:json {
+  
+  {
+    "unitPrice": 1.00
+  }
+}

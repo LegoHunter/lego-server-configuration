@@ -1,0 +1,24 @@
+meta {
+  name: Photosets - Create
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{flickr_rest_base_url}}/
+  body: form-urlencoded
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{flickr_api_key}}", oauth_token="{{flickr_oauth_token}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{flickr_oauth_timestamp}}", oauth_nonce="{{flickr_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{flickr_oauth_signature}}"
+}
+
+body:form-urlencoded {
+  method: flickr.photosets.create
+  title: {{flickr_album_title}}
+  description: {{flickr_album_description}}
+  primary_photo_id: {{flickr_primary_photo_id}}
+  format: json
+  nojsoncallback: 1
+}

@@ -1,0 +1,40 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-dev-api
+  namespace: minio-dev
+  annotations:
+    kubernetes.io/ingress.class: traefik-external
+spec:
+  entryPoints:
+    - websecure  # Assumes Traefik's HTTPS entrypoint (port 443)
+  routes:
+    - match: Host(`api.minio.dev.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - kind: Service
+          name: minio-dev-hl  # MinIO API service
+          port: 9000
+  tls:
+    secretName: minio-dev-tls  # cert-manager will create this secret
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: minio-dev-console
+  namespace: minio-dev
+  annotations:
+    kubernetes.io/ingress.class: traefik-external
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`console.minio.dev.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - kind: Service
+          name: minio-dev-console  # MinIO console service
+          port: 9090  # Internal HTTP port
+  tls:
+    secretName: minio-dev-tls  # cert-manager will create this secret

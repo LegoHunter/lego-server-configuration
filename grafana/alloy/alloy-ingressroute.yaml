@@ -1,0 +1,46 @@
+# alloy-ingressroute.yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alloy-https
+  namespace: alloy
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production   # or letsencrypt-staging
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`alloy.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - name: alloy-lb
+          port: 12345
+  tls:
+    secretName: alloy-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alloy-http-redirect
+  namespace: alloy
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`alloy.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - name: alloy-lb
+          port: 12345
+      middlewares:
+        - name: redirect-https
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: alloy
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

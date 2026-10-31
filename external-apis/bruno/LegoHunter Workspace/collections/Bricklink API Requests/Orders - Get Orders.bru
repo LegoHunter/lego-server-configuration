@@ -1,0 +1,20 @@
+meta {
+  name: Orders - Get Orders
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{bricklink_rest_base_url}}/orders?direction=in&status=PENDING
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: OAuth oauth_consumer_key="{{bricklink_consumer_key}}", oauth_token="{{bricklink_token_value}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{bricklink_oauth_timestamp}}", oauth_nonce="{{bricklink_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{bricklink_oauth_signature}}"
+}
+
+params:query {
+  direction: in
+  status: PENDING
+}

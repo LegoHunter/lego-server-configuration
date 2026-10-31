@@ -1,0 +1,15 @@
+meta {
+  name: Inventory - Delete Inventory Item
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{ebay_api_base_url}}/sell/inventory/v1/inventory_item/{{ebay_inventory_sku}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ebay_access_token}}
+}

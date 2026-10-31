@@ -1,0 +1,15 @@
+meta {
+  name: Inventory - Find By UUID
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/uuid/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: none
+}
+
+params:path {
+  uuid: 00000000-0000-0000-0000-000000000000
+}

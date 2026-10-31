@@ -1,0 +1,37 @@
+meta {
+  name: Marketplace Listings - Update Draft
+  type: http
+  seq: 31
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings/6000
+  body: json
+  auth: none
+}
+
+params:path {
+  marketplaceListingId: 6000
+}
+
+body:json {
+  {
+    "listingStatusCode": "DRAFT",
+    "title": "6390-1 - Main Street",
+    "description": "Updated local BrickLink draft description.",
+    "privateNotes": "Updated from Bruno.",
+    "unitPrice": 199.95,
+    "currencyCode": "USD",
+    "fixedPrice": true,
+    "bricklink": {
+      "colorId": 0,
+      "colorName": "Not Applicable",
+      "bulk": 1,
+      "isRetain": false,
+      "isStockRoom": true,
+      "stockRoomId": "C",
+      "saleRate": 0,
+      "remarks": "legoHunterEnv=local;source=bruno-example"
+    }
+  }
+}

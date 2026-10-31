@@ -1,2 +1,7 @@
 /.idea/
 /lego-server-configuration.iml
+
+# Never commit private keys or TLS Secrets
+*.key
+*.pem
+kubernetes/configuration-files/hello-app-tls.yaml

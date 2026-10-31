@@ -1,0 +1,37 @@
+meta {
+  name: Marketplace Listings - Create Draft
+  type: http
+  seq: 29
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "itemInventoryId": 100,
+    "marketplaceCode": "BRICKLINK",
+    "externalCatalogItemId": 199,
+    "updateSaleIntentToSellable": true,
+    "saleIntentNote": "Create local BrickLink draft for pricing onboarding.",
+    "title": "6390-1 - Main Street",
+    "description": "Local BrickLink draft. Non-prod environments are forced to stockroom-only.",
+    "privateNotes": "Created from Bruno workspace example.",
+    "unitPrice": null,
+    "currencyCode": "USD",
+    "fixedPrice": true,
+    "bricklink": {
+      "colorId": 0,
+      "colorName": "Not Applicable",
+      "bulk": 1,
+      "isRetain": false,
+      "isStockRoom": true,
+      "stockRoomId": "C",
+      "saleRate": 0,
+      "remarks": "legoHunterEnv=local;source=bruno-example"
+    }
+  }
+}

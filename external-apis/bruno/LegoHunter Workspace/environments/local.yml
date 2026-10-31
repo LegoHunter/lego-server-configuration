@@ -1,0 +1,57 @@
+name: local
+variables:
+  - name: lego_data_service_base_url
+    value: http://localhost:8080
+    enabled: true
+    secret: false
+    type: text
+  - name: lego_data_ingress_base_url
+    value: http://localhost:8081
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_ajax_base_url
+    value: https://www.bricklink.com
+    enabled: true
+    secret: false
+    type: text
+  - name: bitly_base_url
+    value: https://api-ssl.bitly.com/v4
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_rest_base_url
+    value: https://api.bricklink.com/api/store/v1
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_rest_base_url
+    value: https://www.flickr.com/services/rest
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_upload_base_url
+    value: https://up.flickr.com/services
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_api_base_url
+    value: https://api.ebay.com
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_oauth_base_url
+    value: https://api.ebay.com
+    enabled: true
+    secret: false
+    type: text
+  - name: local_basic_auth_username
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: local_basic_auth_password
+    value: ""
+    enabled: true
+    secret: true
+    type: text

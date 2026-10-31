@@ -1,0 +1,57 @@
+name: eBay API
+variables:
+  - name: ebay_api_base_url
+    value: https://api.ebay.com
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_oauth_base_url
+    value: https://api.ebay.com
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_marketplace_id
+    value: EBAY_US
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_scope
+    value: https://api.ebay.com/oauth/api_scope
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_search_query
+    value: Lego 6390
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_item_id
+    value: v1|110000000000|0
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_inventory_sku
+    value: LEGO-6390-1-EXAMPLE
+    enabled: true
+    secret: false
+    type: text
+  - name: ebay_client_id
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: ebay_client_secret
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: ebay_client_credentials_basic
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: ebay_access_token
+    value: ""
+    enabled: true
+    secret: true
+    type: text

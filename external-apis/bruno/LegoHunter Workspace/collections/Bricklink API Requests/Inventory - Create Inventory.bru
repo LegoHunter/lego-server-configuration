@@ -1,0 +1,36 @@
+meta {
+  name: Inventory - Create Inventory
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{bricklink_rest_base_url}}/inventories
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: OAuth oauth_consumer_key="{{bricklink_consumer_key}}", oauth_token="{{bricklink_token_value}}", oauth_signature_method="HMAC-SHA1", oauth_timestamp="{{bricklink_oauth_timestamp}}", oauth_nonce="{{bricklink_oauth_nonce}}", oauth_version="1.0", oauth_signature="{{bricklink_oauth_signature}}"
+}
+
+body:json {
+  {
+    "item": {
+      "no": "{{bricklink_item_no}}",
+      "type": "{{bricklink_item_type}}"
+    },
+    "color_id": {{bricklink_color_id}},
+    "quantity": 1,
+    "new_or_used": "U",
+    "completeness": "C",
+    "unit_price": 199.95,
+    "description": "Example stockroom-only draft payload. Review carefully before real use.",
+    "remarks": "legoHunterEnv=local;source=bruno-example",
+    "bulk": 1,
+    "is_retain": false,
+    "is_stock_room": true,
+    "stock_room_id": "C"
+  }
+}

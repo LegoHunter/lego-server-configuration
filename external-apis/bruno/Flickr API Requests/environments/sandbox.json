@@ -1,0 +1,71 @@
+{
+    "name":  "sandbox",
+    "variables":  [
+                      {
+                          "name":  "lego_data_service_base_url",
+                          "secret":  false,
+                          "value":  "https://lego-data-service.sandbox.internal.legohunter.io",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "lego_data_ingress_base_url",
+                          "secret":  false,
+                          "value":  "https://lego-data-ingress.sandbox.internal.legohunter.io",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_ajax_base_url",
+                          "secret":  false,
+                          "value":  "https://www.bricklink.com",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bitly_base_url",
+                          "secret":  false,
+                          "value":  "https://api-ssl.bitly.com/v4",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "bricklink_rest_base_url",
+                          "secret":  false,
+                          "value":  "https://api.bricklink.com/api/store/v1",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_rest_base_url",
+                          "secret":  false,
+                          "value":  "https://www.flickr.com/services/rest",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_upload_base_url",
+                          "secret":  false,
+                          "value":  "https://up.flickr.com/services",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_api_base_url",
+                          "secret":  false,
+                          "value":  "https://api.ebay.com",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "ebay_oauth_base_url",
+                          "secret":  false,
+                          "value":  "https://api.ebay.com",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "sandbox_basic_auth_username",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "sandbox_basic_auth_password",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      }
+                  ]
+}

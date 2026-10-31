@@ -30,6 +30,8 @@ When setting up grafana datasource, add header:
 * HTTP Header Value: `legohunter.io
 *
 
+### Grafana Installation
+
 ```
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update

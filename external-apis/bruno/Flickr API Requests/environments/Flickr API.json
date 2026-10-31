@@ -1,0 +1,113 @@
+{
+    "name":  "Flickr API",
+    "variables":  [
+                      {
+                          "name":  "flickr_rest_base_url",
+                          "secret":  false,
+                          "value":  "https://www.flickr.com/services/rest",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_upload_base_url",
+                          "secret":  false,
+                          "value":  "https://up.flickr.com/services",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_user_id",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_photoset_id",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_primary_photo_id",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_photo_id",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_album_title",
+                          "secret":  false,
+                          "value":  "6390-1 - Main Street",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_album_description",
+                          "secret":  false,
+                          "value":  "LegoHunter inventory item",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_photo_title",
+                          "secret":  false,
+                          "value":  "Front view",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_photo_description",
+                          "secret":  false,
+                          "value":  "LegoHunter photo metadata update",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_photo_file_path",
+                          "secret":  false,
+                          "value":  "C:\\path\\to\\photo.jpg",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_oauth_timestamp",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_oauth_nonce",
+                          "secret":  false,
+                          "value":  "fill-me-in",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_oauth_signature",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_api_key",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_api_secret",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_oauth_token",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      },
+                      {
+                          "name":  "flickr_oauth_token_secret",
+                          "secret":  true,
+                          "value":  "",
+                          "enabled":  true
+                      }
+                  ]
+}

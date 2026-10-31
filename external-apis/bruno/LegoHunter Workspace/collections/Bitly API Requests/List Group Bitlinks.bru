@@ -1,0 +1,19 @@
+meta {
+  name: List Group Bitlinks
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{bitly_base_url}}/groups/{{bitly_group_guid}}/bitlinks?size=50
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{bitly_access_token}}
+}
+
+params:query {
+  size: 50
+}

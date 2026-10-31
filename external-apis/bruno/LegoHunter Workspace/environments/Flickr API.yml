@@ -1,0 +1,92 @@
+name: Flickr API
+variables:
+  - name: flickr_rest_base_url
+    value: https://www.flickr.com/services/rest
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_upload_base_url
+    value: https://up.flickr.com/services
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_user_id
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_photoset_id
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_primary_photo_id
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_photo_id
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_album_title
+    value: 6390-1 - Main Street
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_album_description
+    value: LegoHunter inventory item
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_photo_title
+    value: Front view
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_photo_description
+    value: LegoHunter photo metadata update
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_photo_file_path
+    value: C:\path\to\photo.jpg
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_oauth_timestamp
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_oauth_nonce
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: flickr_oauth_signature
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: flickr_api_key
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: flickr_api_secret
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: flickr_oauth_token
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: flickr_oauth_token_secret
+    value: ""
+    enabled: true
+    secret: true
+    type: text

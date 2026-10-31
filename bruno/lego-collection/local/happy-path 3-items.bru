@@ -1,0 +1,167 @@
+meta {
+  name: happy-path 3-items
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{server-base}}/api/v1/inventory
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "transactionDate": "2026-07-27",
+    "fromPartyId": 1,
+    "toPartyId": 2,
+    "transactionPlatformName": "Bricklink",
+    "notes": "Sample three-item acquisition intake request for Phase 1 validation.",
+    "inventoryItems": [
+      {
+        "itemNumber": "6390-1",
+        "description": "Main Street",
+        "boxNumber": 12,
+        "newOrUsed": "U",
+        "completeness": "C",
+        "sealed": false,
+        "builtOnce": true,
+        "itemConditionCode": "VG",
+        "boxConditionCode": "G",
+        "instructionsConditionCode": "VG",
+        "transactionTypeCode": "P",
+        "costs": [
+          {
+            "costTypeCode": "PRICE",
+            "amount": 184.37,
+            "currencyCode": "USD",
+            "notes": "Item purchase price."
+          },
+          {
+            "costTypeCode": "FEE",
+            "amount": 6.25,
+            "currencyCode": "USD",
+            "notes": "Seller handling fee allocated to this item."
+          },
+          {
+            "costTypeCode": "TAX",
+            "amount": 14.78,
+            "currencyCode": "USD",
+            "notes": "Sales tax allocated to this item."
+          }
+        ],
+        "forSale": false,
+        "quantity": 1,
+        "active": true
+      },
+      {
+        "itemNumber": "6542-1",
+        "description": "Launch & Load Seaport",
+        "boxNumber": 12,
+        "newOrUsed": "U",
+        "completeness": "I",
+        "sealed": false,
+        "builtOnce": true,
+        "itemConditionCode": "G",
+        "boxConditionCode": "F",
+        "instructionsConditionCode": "G",
+        "transactionTypeCode": "P",
+        "costs": [
+          {
+            "costTypeCode": "PRICE",
+            "amount": 92.15,
+            "currencyCode": "USD",
+            "notes": "Item purchase price."
+          },
+          {
+            "costTypeCode": "SHIPPING",
+            "amount": 8.40,
+            "currencyCode": "USD",
+            "notes": "Shipping allocated to this item."
+          },
+          {
+            "costTypeCode": "INSURANCE",
+            "amount": 3.75,
+            "currencyCode": "USD",
+            "notes": "Insurance allocated to this item."
+          }
+        ],
+        "forSale": false,
+        "quantity": 1,
+        "active": true
+      },
+      {
+        "itemNumber": "6990-1",
+        "description": "Monorail Transport System",
+        "boxNumber": 13,
+        "newOrUsed": "U",
+        "completeness": "C",
+        "sealed": false,
+        "builtOnce": true,
+        "itemConditionCode": "E",
+        "boxConditionCode": "VG",
+        "instructionsConditionCode": "E",
+        "transactionTypeCode": "P",
+        "costs": [
+          {
+            "costTypeCode": "PRICE",
+            "amount": 237.80,
+            "currencyCode": "USD",
+            "notes": "Item purchase price."
+          },
+          {
+            "costTypeCode": "FEE",
+            "amount": 9.95,
+            "currencyCode": "USD",
+            "notes": "Seller handling fee allocated to this item."
+          },
+          {
+            "costTypeCode": "TAX",
+            "amount": 18.66,
+            "currencyCode": "USD",
+            "notes": "Sales tax allocated to this item."
+          }
+        ],
+        "forSale": false,
+        "quantity": 1,
+        "active": true
+      }
+    ],
+    "costs": [
+      {
+        "costTypeCode": "SHIPPING",
+        "amount": 21.50,
+        "currencyCode": "USD",
+        "notes": "Transaction-level shipping charge."
+      },
+      {
+        "costTypeCode": "TAX",
+        "amount": 12.64,
+        "currencyCode": "USD",
+        "notes": "Transaction-level tax not allocated to individual items."
+      },
+      {
+        "costTypeCode": "FEE",
+        "amount": 4.99,
+        "currencyCode": "USD",
+        "notes": "Transaction-level marketplace/service fee."
+      }
+    ],
+    "payments": [
+      {
+        "paymentDate": "2026-07-27",
+        "currencyCode": "USD",
+        "sellerCurrencyCode": "USD",
+        "exchangeRate": 1.0,
+        "amount": 615.24,
+        "paymentPlatformName": "PayPal",
+        "paymentPlatformTransactionId": "PAYPAL-SAMPLE-20260727-001"
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

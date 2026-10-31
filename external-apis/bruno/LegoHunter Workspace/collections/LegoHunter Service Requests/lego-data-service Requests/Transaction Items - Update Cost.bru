@@ -1,0 +1,25 @@
+meta {
+  name: Transaction Items - Update Cost
+  type: http
+  seq: 27
+}
+
+put {
+  url: {{lego_data_service_base_url}}/api/v1/transaction-items/4000/costs/5000
+  body: json
+  auth: none
+}
+
+params:path {
+  transactionItemId: 4000
+  transactionItemCostId: 5000
+}
+
+body:json {
+  {
+    "costTypeCode": "FEE",
+    "amount": 4.75,
+    "currencyCode": "USD",
+    "notes": "Corrected item-level handling fee."
+  }
+}

@@ -1,0 +1,32 @@
+name: Bitly
+variables:
+  - name: bitly_base_url
+    value: https://api-ssl.bitly.com/v4
+    enabled: true
+    secret: false
+    type: text
+  - name: bitly_group_guid
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: bitly_domain
+    value: bit.ly
+    enabled: true
+    secret: false
+    type: text
+  - name: bitly_long_url
+    value: https://legohunter.io
+    enabled: true
+    secret: false
+    type: text
+  - name: bitly_bitlink_id
+    value: bit.ly/example
+    enabled: true
+    secret: false
+    type: text
+  - name: bitly_access_token
+    value: ""
+    enabled: true
+    secret: true
+    type: text

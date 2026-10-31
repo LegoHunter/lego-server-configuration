@@ -1,0 +1,72 @@
+name: Bricklink API
+variables:
+  - name: bricklink_rest_base_url
+    value: https://api.bricklink.com/api/store/v1
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_item_type
+    value: SET
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_item_no
+    value: 6390-1
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_order_id
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_inventory_id
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_color_id
+    value: "0"
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_category_id
+    value: "67"
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_oauth_timestamp
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_oauth_nonce
+    value: fill-me-in
+    enabled: true
+    secret: false
+    type: text
+  - name: bricklink_oauth_signature
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: bricklink_consumer_key
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: bricklink_consumer_secret
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: bricklink_token_value
+    value: ""
+    enabled: true
+    secret: true
+    type: text
+  - name: bricklink_token_secret
+    value: ""
+    enabled: true
+    secret: true
+    type: text

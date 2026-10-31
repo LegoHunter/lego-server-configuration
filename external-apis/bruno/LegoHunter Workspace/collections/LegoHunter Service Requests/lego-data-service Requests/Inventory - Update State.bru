@@ -1,0 +1,21 @@
+meta {
+  name: Inventory - Update State
+  type: http
+  seq: 14
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/100/state
+  body: json
+  auth: none
+}
+
+params:path {
+  itemInventoryId: 100
+}
+
+body:json {
+  {
+    "inventoryStateCode": "AVAILABLE"
+  }
+}

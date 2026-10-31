@@ -1,0 +1,30 @@
+meta {
+  name: Inventory - Update Details
+  type: http
+  seq: 13
+}
+
+patch {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/100/details
+  body: json
+  auth: none
+}
+
+params:path {
+  itemInventoryId: 100
+}
+
+body:json {
+  {
+    "boxNumber": 12,
+    "description": "Updated storage and condition details.",
+    "active": true,
+    "newOrUsed": "U",
+    "completeness": "C",
+    "sealed": false,
+    "builtOnce": true,
+    "itemConditionCode": "VG",
+    "boxConditionCode": "G",
+    "instructionsConditionCode": "VG"
+  }
+}

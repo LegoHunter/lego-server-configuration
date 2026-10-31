@@ -1,0 +1,15 @@
+meta {
+  name: Items - Find By Id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/items/199
+  body: none
+  auth: none
+}
+
+params:path {
+  itemId: 199
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Transactions - Add Payment
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000/payments
+  body: json
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+}
+
+body:json {
+  {
+    "paymentDate": "2026-07-28",
+    "currencyCode": "USD",
+    "sellerCurrencyCode": "USD",
+    "exchangeRate": 1.0,
+    "amount": 202.62,
+    "paymentPlatformName": "PayPal",
+    "paymentPlatformTransactionId": "PAYPAL-BRUNO-EXAMPLE-001"
+  }
+}

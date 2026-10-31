@@ -1,0 +1,18 @@
+meta {
+  name: Inventory - Search
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/inventory/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "saleIntentCode": "SELLABLE",
+    "limit": 25
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Carriers - Find By Code
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/carriers/FEDEX
+  body: none
+  auth: none
+}
+
+params:path {
+  carrierCode: FEDEX
+}

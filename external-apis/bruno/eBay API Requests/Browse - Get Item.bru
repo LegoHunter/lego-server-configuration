@@ -1,0 +1,16 @@
+meta {
+  name: Browse - Get Item
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{ebay_api_base_url}}/buy/browse/v1/item/{{ebay_item_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ebay_access_token}}
+  X-EBAY-C-MARKETPLACE-ID: {{ebay_marketplace_id}}
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Transactions - Update Cost
+  type: http
+  seq: 20
+}
+
+put {
+  url: {{lego_data_service_base_url}}/api/v1/transactions/1000/costs/2000
+  body: json
+  auth: none
+}
+
+params:path {
+  transactionId: 1000
+  transactionCostId: 2000
+}
+
+body:json {
+  {
+    "costTypeCode": "SHIPPING",
+    "amount": 13.50,
+    "currencyCode": "USD",
+    "notes": "Corrected transaction-level shipping."
+  }
+}

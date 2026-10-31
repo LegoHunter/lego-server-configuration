@@ -1,0 +1,19 @@
+meta {
+  name: Marketplace Listings - Create Sync Request
+  type: http
+  seq: 34
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/marketplace-listings/8570/sync-requests
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "syncRequestTypeCode": "LISTING_CREATE",
+    "syncReasonCode": "MANUAL_LISTING_CREATE",
+    "maxAttempts": 3
+  }
+}
