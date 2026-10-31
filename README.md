@@ -1,21 +1,6 @@
 # Github Runner
 
-### Installation
+GitHub Actions runners run in the homelab k3s cluster through Actions Runner Controller (ARC),
+Helm releases `arc-controller` and `arc-runner` in namespace `arc-runners`.
 
-https://github.com/organizations/LegoHunter/settings/actions/runners/new?arch=arm64
-
-### Github Runner information 
-
-* Hosted on legolandserver1 (10.0.0.10)
-* Installed under `/etc/actions-runner`
-
-### Checking status
-
-https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/monitoring-and-troubleshooting-self-hosted-runners
-
-```shell
-su github-runner
-cd /etc/actions-runner
-./config --check --url https://github.com/LegoHunter/<repo-name>
-```
-
+See [github-runner/README.md](github-runner/README.md) for installation, runner image builds, and cleanup.
