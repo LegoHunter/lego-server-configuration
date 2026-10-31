@@ -1,0 +1,31 @@
+# Helm values for the `arc-runner` GitHub Actions runner scale set (namespace arc-runners).
+#
+# Chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set  (0.14.2)
+# Used by the LegoHunter org workflows via `runs-on: [arc-runner]` (kubectl deploys to services-*).
+#
+# This file holds NO secrets. Do not add tokens or keys here and do not pass them with --set.
+# See ../README.md for the install/upgrade procedure.
+
+githubConfigUrl: "https://github.com/LegoHunter"
+
+# GitHub App credentials (github_app_id, github_app_installation_id, github_app_private_key),
+# created out-of-band as Secret arc-runners/arc-runners-auth (see README).
+# Must be a plain string: a map makes the chart try to create its own secret from inline values.
+githubConfigSecret: arc-runners-auth
+
+runnerScaleSetName: "arc-runner"
+minRunners: 0
+maxRunners: 5
+
+template:
+  spec:
+    # Runner pods authenticate to the cluster with this ServiceAccount's projected token
+    # (auto-rotated by Kubernetes). Its permissions are deploy-only and namespace-scoped:
+    # see ../rbac/arc-deployer.yaml. No kubeconfig file is mounted; kubectl falls back to
+    # in-cluster configuration.
+    serviceAccountName: arc-deployer
+    containers:
+      - name: runner
+        # Built from ../Dockerfile (actions-runner + kubectl).
+        image: quay.io/tvattima/arc-runner-arm64:k8s-v7
+        command: ["/home/runner/run.sh"]

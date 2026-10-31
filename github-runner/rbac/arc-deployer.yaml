@@ -1,0 +1,72 @@
+# Cluster identity for the `arc-runner` GitHub Actions runners (see ../helm/arc-runner-values.yaml).
+#
+# Replaces the old arc-runner-kubeconfig Secret, which held a copy of the k3s cluster-admin
+# client certificate (O=system:masters). That certificate expired on 2026-09-28 and broke every
+# deploy (HOMELAB-26 B1); it also gave every workflow job full, unrevocable cluster-admin.
+#
+# Model:
+#   ServiceAccount arc-runners/arc-deployer   - runner pods run as this; its projected token is
+#                                               short-lived and rotated by Kubernetes.
+#   ClusterRole    arc-deployer               - defines WHAT a deploy may touch (no namespace by itself).
+#   RoleBinding    <namespace>/arc-deployer   - grants that ClusterRole in ONE namespace only.
+#
+# Permissions cover exactly what build-test-deploy.yml does:
+#   kubectl kustomize ... | kubectl apply -n services-<env> -f -   (Deployment, Service, IngressRoute, Middleware)
+#   kubectl rollout restart / rollout status deployment/<app>
+# There is deliberately no `delete`, no Secrets/ConfigMaps access, and no cluster-wide binding.
+#
+# Adding an environment (e.g. once services-dev exists): copy the RoleBinding below and change
+# its namespace. Apply with an admin context:  kubectl apply -f github-runner/rbac/arc-deployer.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: arc-deployer
+  namespace: arc-runners
+  labels:
+    app.kubernetes.io/name: arc-deployer
+    app.kubernetes.io/part-of: github-arc
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: arc-deployer
+  labels:
+    app.kubernetes.io/name: arc-deployer
+    app.kubernetes.io/part-of: github-arc
+rules:
+  # kubectl apply + rollout restart (patch) + rollout status (get/watch)
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # rollout status / troubleshooting output
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Traefik routing
+  - apiGroups: ["traefik.io"]
+    resources: ["ingressroutes", "middlewares"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: arc-deployer
+  namespace: services-sandbox
+  labels:
+    app.kubernetes.io/name: arc-deployer
+    app.kubernetes.io/part-of: github-arc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: arc-deployer
+subjects:
+  - kind: ServiceAccount
+    name: arc-deployer
+    namespace: arc-runners

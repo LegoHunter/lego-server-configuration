@@ -1,0 +1,13 @@
+# Helm values for the Actions Runner Controller (release `arc-controller`, namespace arc-runners).
+#
+# Chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller  (0.14.1)
+# Reconstructed from the live deployment on 2026-10-31. Only non-default values are listed;
+# the controller image follows the chart's appVersion (do not pin an older tag here).
+#
+# This file holds NO secrets.
+
+flags:
+  logLevel: "debug"
+  logFormat: "text"
+  runnerMaxConcurrentReconciles: 2
+  updateStrategy: "immediate"
