@@ -2,6 +2,7 @@ opencollection: 1.0.0
 info:
   name: "LegoHunter Workspace"
   type: workspace
+
 collections:
   - name: "LegoHunter Service Requests"
     path: "collections/LegoHunter Service Requests"
@@ -15,5 +16,9 @@ collections:
     path: "collections/Flickr API Requests"
   - name: "eBay API Requests"
     path: "collections/eBay API Requests"
-specs: []
-docs: ""
+  - name: "UniFi Network API 10.4.57"
+    path: "D:/dev/projects/lego-collection/homelab-power-manager/bruno/unifi-network-api"
+
+specs:
+
+docs: ''

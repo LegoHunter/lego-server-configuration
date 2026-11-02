@@ -1,0 +1,34 @@
+meta {
+  name: Untitled 1
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8080/api/v1/migration/flickr/albums/back-sync
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "targetDataSourceKey": "rasppi5-01-lego-sandbox",
+    "provider": "flickr",
+    "externalServiceId": 10,
+    "userId": "144144385@N08",
+    "dryRun": false,
+    "apply": true,
+    "limit": 10000,
+    "albumPageSize": 100,
+    "photoPageSize": 500,
+    "allowOrderFallback": true
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+}
