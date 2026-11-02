@@ -22,6 +22,10 @@ name: Kubernetes service pipeline
 #            DEV image for that commit, e.g. the DEV gate was shut when it merged, or develop's head
 #            is not a feature/* merge. Only if deploy-prod-enabled.
 #
+# Docs-only changes (E9): a feature push or PR that only touches *.md, docs/** or LICENSE skips
+# the build, tests, image and deploy. Merges into develop/main are never skipped.
+# Concurrency (E4): each environment deploys one run at a time per service; the newest waits.
+#
 # Every deploy pins the image by digest (quay.io/tvattima/<app>@sha256:...) through a throwaway
 # kustomization over kubernetes/overlays/<env>, so what runs is exactly what was pushed or
 # promoted, and a changed digest is what rolls the Deployment (no extra rollout restart).
@@ -72,10 +76,55 @@ on:
         required: true
 
 jobs:
+  changes:
+    name: Detect docs-only change
+    # E9: a push or PR that only touches documentation (*.md, docs/**, LICENSE) skips the build,
+    # tests, image and deploy. Anything else, or anything it cannot determine (a new branch, a
+    # failed or truncated compare), runs everything.
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')) || (github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop' && startsWith(github.head_ref, 'feature/'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      docs-only: ${{ steps.detect.outputs.docs-only }}
+    steps:
+      - name: Compare changed files
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = pull_request ]; then base="$PR_BASE"; head="$PR_HEAD"; else base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi
+          docs_only=false
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            echo "No previous commit to compare with (new branch): running everything."
+          elif json=$(gh api "repos/$REPO/compare/$base...$head"); then
+            count=$(jq '.files | length' <<<"$json")
+            if [ "$count" -gt 0 ] && [ "$count" -lt 300 ]; then
+              other=$(jq -r '.files[].filename' <<<"$json" | grep -Evc '(\.md$|^docs/|^LICENSE$)' || true)
+              if [ "$other" = 0 ]; then docs_only=true; fi
+            fi
+            echo "Changed files: $count; docs-only: $docs_only"
+            jq -r '.files[].filename' <<<"$json" | head -50
+          else
+            echo "Compare $base...$head failed: running everything."
+          fi
+          echo "docs-only=$docs_only" >> "$GITHUB_OUTPUT"
+          if [ "$docs_only" = true ]; then
+            echo "::notice title=Docs-only change::Only documentation changed, so build, tests and deploy were skipped."
+          fi
+
   pr-test:
     name: PR tests
     # Tests the feature branch merged with the latest develop, before it is merged. No deploy.
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop' && startsWith(github.head_ref, 'feature/')
+    needs: changes
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop' && startsWith(github.head_ref, 'feature/') && needs.changes.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -93,13 +142,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sandbox-maven-build:
-    name: Sandbox Maven deploy
+    name: Sandbox Maven build
     # Runs the tests as part of the Maven build. github.sha is the pushed feature-branch commit.
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
+    # Skipped (with the image build and deploy after it) for a docs-only push (E9).
+    needs: changes
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/') && needs.changes.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -107,8 +158,10 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: temurin
           cache: maven
-      - name: Build and deploy Maven snapshot
-        run: mvn --batch-mode --update-snapshots deploy
+      - name: Maven verify (tests + jar)
+        # E9: verify, not deploy - nothing consumes the services' Maven artifacts, so they are no
+        # longer published to GitHub Packages. Same tests as before; the jar is still in target/.
+        run: mvn --batch-mode --update-snapshots verify
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload JAR artifact
@@ -199,12 +252,13 @@ jobs:
           echo "$msg" >> "$GITHUB_STEP_SUMMARY"
 
   dev-maven-build:
-    name: DEV Maven deploy
+    name: DEV Maven build
+    # Never skipped for docs-only merges: PROD can only promote a develop commit DEV has built (E1).
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' && startsWith(github.head_ref, 'feature/') && inputs.deploy-dev-enabled
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -214,8 +268,10 @@ jobs:
           java-version: ${{ inputs.java-version }}
           distribution: temurin
           cache: maven
-      - name: Build and deploy Maven snapshot
-        run: mvn --batch-mode --update-snapshots deploy
+      - name: Maven verify (tests + jar)
+        # E9: verify, not deploy - nothing consumes the services' Maven artifacts, so they are no
+        # longer published to GitHub Packages. Same tests as before; the jar is still in target/.
+        run: mvn --batch-mode --update-snapshots verify
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload JAR artifact
@@ -266,6 +322,11 @@ jobs:
     name: Deploy DEV
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' && startsWith(github.head_ref, 'feature/') && inputs.deploy-dev-enabled
     needs: dev-container-build
+    # E4: one DEV deploy at a time per service; a newer merge replaces any deploy still
+    # waiting, so the latest merge is the one that ends up running.
+    concurrency:
+      group: deploy-dev-${{ inputs.app }}
+      cancel-in-progress: false
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
@@ -355,6 +416,11 @@ jobs:
     name: Deploy PROD
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && inputs.deploy-prod-enabled
     needs: prod-promote
+    # E4: one PROD deploy at a time per service; a newer merge replaces any deploy still
+    # waiting, so the latest merge is the one that ends up running.
+    concurrency:
+      group: deploy-prod-${{ inputs.app }}
+      cancel-in-progress: false
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4

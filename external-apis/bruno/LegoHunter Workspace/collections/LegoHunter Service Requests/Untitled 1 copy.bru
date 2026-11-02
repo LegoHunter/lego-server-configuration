@@ -1,0 +1,33 @@
+meta {
+  name: Untitled 1 copy
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8080/api/v1/migration/bitly/flickr-albums/short-urls/back-fill
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "targetDataSourceKey": "rasppi5-01-lego-sandbox",
+    "groupGuid": "Bj33mUQ2L1s",
+    "externalServiceId": 10,
+    "dryRun": false,
+    "apply": true,
+    "limit": 10000,
+    "pageSize": 100,
+    "archived": "off",
+    "overwriteExisting": false
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false
+}

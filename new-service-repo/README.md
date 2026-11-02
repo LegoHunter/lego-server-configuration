@@ -105,6 +105,11 @@ Every deploy pins the image by digest (`quay.io/tvattima/<service>@sha256:...`),
 byte-for-byte the image DEV ran. Consequences: release to PROD only by merging `develop` into `main`
 (never commit to `main` directly), and keep the DEV gate open whenever the PROD gate is open.
 
+A feature push or PR that changes only documentation (`*.md`, `docs/**`, `LICENSE`) skips the
+build, tests, image and deploy; merges into `develop`/`main` are never skipped. Each environment
+deploys one run at a time per service. The services build with `mvn verify` (their Maven artifacts
+are not published to GitHub Packages; only libraries publish).
+
 ### Repository layout
 
 ```
@@ -215,6 +220,8 @@ environments: they publish a `-SNAPSHOT` of the version in their `pom.xml`.
 | push to `develop` (a merge) | `mvn deploy` from `develop`, so the published SNAPSHOT returns to the merged code |
 
 The latest push to any of those branches wins the SNAPSHOT. `main`/`master` pushes publish nothing.
+Docs-only pushes and PRs (`*.md`, `docs/**`, `LICENSE`) skip tests and publishing, and publishes
+run one at a time per branch.
 
 Copy this to `.github/workflows/build-test-deploy.yml`:
 

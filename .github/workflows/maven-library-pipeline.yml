@@ -11,6 +11,7 @@ name: Maven library pipeline
 #                        published SNAPSHOT returns to the merged code.
 #   PR into develop      tests only, against the branch merged with the latest develop. Publishes
 #                        nothing.
+# Docs-only pushes and PRs (only *.md, docs/**, LICENSE changed) skip tests and publishing (E9).
 # Every library publishes the version in its pom, so the latest push to any of those branches wins.
 #
 # Callers reference this file at @develop, so a change merged here reaches every library on its next
@@ -28,10 +29,55 @@ on:
         default: '21'
 
 jobs:
+  changes:
+    name: Detect docs-only change
+    # E9: a push or PR that only touches documentation (*.md, docs/**, LICENSE) skips the build,
+    # tests, image and deploy. Anything else, or anything it cannot determine (a new branch, a
+    # failed or truncated compare), runs everything.
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature/') || github.ref == 'refs/heads/develop')) || (github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      docs-only: ${{ steps.detect.outputs.docs-only }}
+    steps:
+      - name: Compare changed files
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = pull_request ]; then base="$PR_BASE"; head="$PR_HEAD"; else base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi
+          docs_only=false
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            echo "No previous commit to compare with (new branch): running everything."
+          elif json=$(gh api "repos/$REPO/compare/$base...$head"); then
+            count=$(jq '.files | length' <<<"$json")
+            if [ "$count" -gt 0 ] && [ "$count" -lt 300 ]; then
+              other=$(jq -r '.files[].filename' <<<"$json" | grep -Evc '(\.md$|^docs/|^LICENSE$)' || true)
+              if [ "$other" = 0 ]; then docs_only=true; fi
+            fi
+            echo "Changed files: $count; docs-only: $docs_only"
+            jq -r '.files[].filename' <<<"$json" | head -50
+          else
+            echo "Compare $base...$head failed: running everything."
+          fi
+          echo "docs-only=$docs_only" >> "$GITHUB_OUTPUT"
+          if [ "$docs_only" = true ]; then
+            echo "::notice title=Docs-only change::Only documentation changed, so build, tests and deploy were skipped."
+          fi
+
   pr-test:
     name: PR tests
     # Tests the PR branch merged with the latest develop, before it is merged. Publishes nothing.
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop'
+    needs: changes
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop' && needs.changes.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,8 +97,14 @@ jobs:
   publish-snapshot:
     name: Publish snapshot
     # Feature-branch and develop pushes: test, then deploy the SNAPSHOT (mvn deploy fails before
-    # publishing if any test fails).
-    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature/') || github.ref == 'refs/heads/develop')
+    # publishing if any test fails). Skipped for a docs-only push (E9): the code, and so the
+    # published SNAPSHOT, is unchanged.
+    # E4: one publish at a time per branch, so an older push cannot overwrite a newer SNAPSHOT.
+    concurrency:
+      group: publish-snapshot-${{ github.repository }}-${{ github.ref }}
+      cancel-in-progress: false
+    needs: changes
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature/') || github.ref == 'refs/heads/develop') && needs.changes.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
