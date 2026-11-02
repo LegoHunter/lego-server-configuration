@@ -141,7 +141,10 @@ jobs:
           distribution: temurin
           cache: maven
       - name: Run Maven tests
-        run: mvn --batch-mode test
+        # --update-snapshots, like every other Maven run here: the restored Maven cache may hold an
+        # older library SNAPSHOT (lego-data etc.), and Maven otherwise rechecks it only once a day,
+        # so PR tests could compile and test against stale library code.
+        run: mvn --batch-mode --update-snapshots test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
