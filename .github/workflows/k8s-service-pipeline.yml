@@ -11,15 +11,27 @@ name: Kubernetes service pipeline
 #            the live preview of the feature branch being worked on; the latest push wins.
 #   PR       a pull request from feature/* into develop only runs the tests, against the branch
 #            merged with the latest develop. No image, no deploy.
-#   DEV      merge of feature/* into develop -> services-dev, only if deploy-dev-enabled.
-#   PROD     merge of develop into main -> services-prod, only if deploy-prod-enabled.
+#   DEV      merge of feature/* into develop: runs the tests on the merge commit, builds the image
+#            ONCE, tags it dev-<merge commit SHA> and deploys it to services-dev. Only if
+#            deploy-dev-enabled.
+#   PROD     merge of develop into main: NO rebuild (HOMELAB-26 E1, build once, promote by digest).
+#            Checks that the main merge commit has exactly the tree of the develop commit that was
+#            merged, takes the DEV image built for that develop commit (dev-<develop SHA>), adds the
+#            tag prod-<main merge SHA> to the same digest and deploys that digest to services-prod.
+#            So PROD runs byte-for-byte the image DEV ran. Fails (does not rebuild) if there is no
+#            DEV image for that commit, e.g. the DEV gate was shut when it merged, or develop's head
+#            is not a feature/* merge. Only if deploy-prod-enabled.
+#
+# Every deploy pins the image by digest (quay.io/tvattima/<app>@sha256:...) through a throwaway
+# kustomization over kubernetes/overlays/<env>, so what runs is exactly what was pushed or
+# promoted, and a changed digest is what rolls the Deployment (no extra rollout restart).
 #
 # Deploy gates
 #   Callers pass deploy-dev-enabled / deploy-prod-enabled from the DEPLOY_DEV_ENABLED /
 #   DEPLOY_PROD_ENABLED Actions variables (repo or LegoHunter org; repo overrides org), true only
 #   when the variable is exactly 'true'. A shut gate skips that environment's Maven build, image
-#   build/push and deploy (skipped, not failed), and an "<ENV> deploy gate" job posts a notice.
-#   SANDBOX is not gated. DEV/PROD images carry no Quay expiry.
+#   build/push (DEV) or promotion (PROD) and deploy (skipped, not failed), and an "<ENV> deploy gate"
+#   job posts a notice. SANDBOX is not gated. DEV/PROD images carry no Quay expiry.
 #
 # Conventions the jobs rely on: the Maven build produces target/*.jar; kubernetes/Containerfile
 # builds the image; kubernetes/overlays/<env> renders a Deployment named <app>; the Quay
@@ -114,7 +126,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image-tag: ${{ github.sha }}
+      image-digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -131,6 +143,7 @@ jobs:
           # Feature-branch images are throwaway; DEV and PROD images must never expire (HOMELAB-26 B6).
           labels: quay.expires-after=26w
       - name: Push to Quay
+        id: push
         uses: redhat-actions/push-to-registry@v2
         with:
           registry: quay.io
@@ -151,17 +164,26 @@ jobs:
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy via Kustomize
+      - name: Deploy by digest
         env:
-          IMAGE_TAG: ${{ needs.sandbox-container-build.outputs.image-tag }}
           APP: ${{ inputs.app }}
+          ENV_NAME: sandbox
+          IMAGE_DIGEST: ${{ needs.sandbox-container-build.outputs.image-digest }}
         run: |
           set -euo pipefail
-          kubectl kustomize kubernetes/overlays/sandbox \
-            | sed "s|quay.io/tvattima/$APP:.*|quay.io/tvattima/$APP:$IMAGE_TAG|g" \
-            | kubectl apply -n services-sandbox -f -
-          kubectl rollout restart deployment "$APP" -n services-sandbox
-          kubectl rollout status deployment "$APP" -n services-sandbox --timeout=5m
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid image digest '$IMAGE_DIGEST'"; exit 1; }
+          mkdir -p kubernetes/.deploy
+          printf '%s\n' \
+            'apiVersion: kustomize.config.k8s.io/v1beta1' \
+            'kind: Kustomization' \
+            'resources:' \
+            "  - ../overlays/$ENV_NAME" \
+            'images:' \
+            "  - name: quay.io/tvattima/$APP" \
+            "    digest: $IMAGE_DIGEST" > kubernetes/.deploy/kustomization.yaml
+          kubectl kustomize kubernetes/.deploy | kubectl apply -n "services-$ENV_NAME" -f -
+          kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
+          echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
 
   dev-deploy-gate:
     name: DEV deploy gate
@@ -172,7 +194,7 @@ jobs:
     steps:
       - name: Report shut gate
         run: |
-          msg="DEV deploy gate is shut (the caller's deploy-dev-enabled input is false; set the DEPLOY_DEV_ENABLED variable to 'true' to open it). DEV Maven build, image build/push and deploy were skipped."
+          msg="DEV deploy gate is shut (the caller's deploy-dev-enabled input is false; set the DEPLOY_DEV_ENABLED variable to 'true' to open it). DEV Maven build, image build/push and deploy were skipped, so this develop commit has no DEV image and cannot later be promoted to PROD."
           echo "::notice title=DEV deploy skipped::$msg"
           echo "$msg" >> "$GITHUB_STEP_SUMMARY"
 
@@ -204,6 +226,7 @@ jobs:
 
   dev-container-build:
     name: DEV container build and push
+    # The one and only image build for this develop commit: PROD later promotes this exact image.
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' && startsWith(github.head_ref, 'feature/') && inputs.deploy-dev-enabled
     needs: dev-maven-build
     runs-on: ubuntu-latest
@@ -211,7 +234,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      image-tag: ${{ github.event.pull_request.merge_commit_sha }}
+      image-digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -224,15 +247,18 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: quay.io/tvattima/${{ inputs.app }}
-          tags: ${{ github.event.pull_request.merge_commit_sha }}
+          # dev- prefix: a sandbox push of the same commit (a new feature branch not yet changed
+          # from develop) tags <sha> with an expiring image; it must never overwrite the DEV image.
+          tags: dev-${{ github.event.pull_request.merge_commit_sha }}
           platforms: linux/arm64
           containerfiles: ./kubernetes/Containerfile
       - name: Push to Quay
+        id: push
         uses: redhat-actions/push-to-registry@v2
         with:
           registry: quay.io
           image: tvattima/${{ inputs.app }}
-          tags: ${{ github.event.pull_request.merge_commit_sha }}
+          tags: dev-${{ github.event.pull_request.merge_commit_sha }}
           username: ${{ inputs.quay-username }}
           password: ${{ secrets.QUAY_TOKEN }}
 
@@ -245,17 +271,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
-      - name: Deploy via Kustomize
+      - name: Deploy by digest
         env:
-          IMAGE_TAG: ${{ needs.dev-container-build.outputs.image-tag }}
           APP: ${{ inputs.app }}
+          ENV_NAME: dev
+          IMAGE_DIGEST: ${{ needs.dev-container-build.outputs.image-digest }}
         run: |
           set -euo pipefail
-          kubectl kustomize kubernetes/overlays/dev \
-            | sed "s|quay.io/tvattima/$APP:.*|quay.io/tvattima/$APP:$IMAGE_TAG|g" \
-            | kubectl apply -n services-dev -f -
-          kubectl rollout restart deployment "$APP" -n services-dev
-          kubectl rollout status deployment "$APP" -n services-dev --timeout=5m
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid image digest '$IMAGE_DIGEST'"; exit 1; }
+          mkdir -p kubernetes/.deploy
+          printf '%s\n' \
+            'apiVersion: kustomize.config.k8s.io/v1beta1' \
+            'kind: Kustomization' \
+            'resources:' \
+            "  - ../overlays/$ENV_NAME" \
+            'images:' \
+            "  - name: quay.io/tvattima/$APP" \
+            "    digest: $IMAGE_DIGEST" > kubernetes/.deploy/kustomization.yaml
+          kubectl kustomize kubernetes/.deploy | kubectl apply -n "services-$ENV_NAME" -f -
+          kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
+          echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
 
   prod-deploy-gate:
     name: PROD deploy gate
@@ -266,87 +301,82 @@ jobs:
     steps:
       - name: Report shut gate
         run: |
-          msg="PROD deploy gate is shut (the caller's deploy-prod-enabled input is false; set the DEPLOY_PROD_ENABLED variable to 'true' to open it). PROD Maven build, image build/push and deploy were skipped."
+          msg="PROD deploy gate is shut (the caller's deploy-prod-enabled input is false; set the DEPLOY_PROD_ENABLED variable to 'true' to open it). PROD promotion and deploy were skipped."
           echo "::notice title=PROD deploy skipped::$msg"
           echo "$msg" >> "$GITHUB_STEP_SUMMARY"
 
-  prod-maven-build:
-    name: PROD Maven deploy
+  prod-promote:
+    name: PROD promote DEV image
+    # Build once, promote by digest (HOMELAB-26 E1): no Maven build and no image build for PROD.
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && inputs.deploy-prod-enabled
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-      - uses: actions/setup-java@v4
-        with:
-          java-version: ${{ inputs.java-version }}
-          distribution: temurin
-          cache: maven
-      - name: Build and deploy Maven snapshot
-        run: mvn --batch-mode --update-snapshots deploy
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload JAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: prod-app-jar
-          path: target/*.jar
-
-  prod-container-build:
-    name: PROD container build and push
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && inputs.deploy-prod-enabled
-    needs: prod-maven-build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     outputs:
-      image-tag: ${{ github.event.pull_request.merge_commit_sha }}
+      image-digest: ${{ steps.promote.outputs.digest }}
+    env:
+      APP: ${{ inputs.app }}
+      MAIN_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+      DEVELOP_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: prod-app-jar
-          path: target
-      - name: Buildah build
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: quay.io/tvattima/${{ inputs.app }}
-          tags: ${{ github.event.pull_request.merge_commit_sha }}
-          platforms: linux/arm64
-          containerfiles: ./kubernetes/Containerfile
-      - name: Push to Quay
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          registry: quay.io
-          image: tvattima/${{ inputs.app }}
-          tags: ${{ github.event.pull_request.merge_commit_sha }}
-          username: ${{ inputs.quay-username }}
-          password: ${{ secrets.QUAY_TOKEN }}
+      - name: Check main has exactly the develop commit's code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          main_tree=$(gh api "repos/$REPO/git/commits/$MAIN_SHA" --jq .tree.sha)
+          develop_tree=$(gh api "repos/$REPO/git/commits/$DEVELOP_SHA" --jq .tree.sha)
+          if [ "$main_tree" != "$develop_tree" ]; then
+            echo "::error title=PROD promotion refused::main ($MAIN_SHA, tree $main_tree) does not have the same code as the develop commit $DEVELOP_SHA (tree $develop_tree). main has changes that are not on develop, so no DEV-tested image matches it. Bring those changes into develop, let DEV build them, then merge develop into main again."
+            exit 1
+          fi
+          echo "main $MAIN_SHA has the same tree as develop $DEVELOP_SHA ($main_tree)."
+      - name: Promote the DEV image to PROD
+        id: promote
+        env:
+          QUAY_USERNAME: ${{ inputs.quay-username }}
+          QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          repo="quay.io/tvattima/$APP"
+          printf '%s' "$QUAY_TOKEN" | skopeo login quay.io --username "$QUAY_USERNAME" --password-stdin
+          if ! skopeo inspect --raw "docker://$repo:dev-$DEVELOP_SHA" > manifest.json; then
+            echo "::error title=No DEV image to promote::$repo:dev-$DEVELOP_SHA does not exist. PROD only deploys the image DEV built for the develop commit being released; there is none if the DEV gate was shut when that commit was merged, or if develop's head is not a merge of a feature/* PR. Get that commit built by DEV, then release again."
+            exit 1
+          fi
+          digest="sha256:$(sha256sum manifest.json | cut -d' ' -f1)"
+          # Same registry and repository: this only adds the tag prod-<main SHA> to the existing digest.
+          skopeo copy --all --preserve-digests "docker://$repo@$digest" "docker://$repo:prod-$MAIN_SHA"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Promoted $repo:dev-$DEVELOP_SHA ($digest) as $repo:prod-$MAIN_SHA" >> "$GITHUB_STEP_SUMMARY"
 
   deploy-prod:
     name: Deploy PROD
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && inputs.deploy-prod-enabled
-    needs: prod-container-build
+    needs: prod-promote
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
-      - name: Deploy via Kustomize
+      - name: Deploy by digest
         env:
-          IMAGE_TAG: ${{ needs.prod-container-build.outputs.image-tag }}
           APP: ${{ inputs.app }}
+          ENV_NAME: prod
+          IMAGE_DIGEST: ${{ needs.prod-promote.outputs.image-digest }}
         run: |
           set -euo pipefail
-          kubectl kustomize kubernetes/overlays/prod \
-            | sed "s|quay.io/tvattima/$APP:.*|quay.io/tvattima/$APP:$IMAGE_TAG|g" \
-            | kubectl apply -n services-prod -f -
-          kubectl rollout restart deployment "$APP" -n services-prod
-          kubectl rollout status deployment "$APP" -n services-prod --timeout=5m
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::Invalid image digest '$IMAGE_DIGEST'"; exit 1; }
+          mkdir -p kubernetes/.deploy
+          printf '%s\n' \
+            'apiVersion: kustomize.config.k8s.io/v1beta1' \
+            'kind: Kustomization' \
+            'resources:' \
+            "  - ../overlays/$ENV_NAME" \
+            'images:' \
+            "  - name: quay.io/tvattima/$APP" \
+            "    digest: $IMAGE_DIGEST" > kubernetes/.deploy/kustomization.yaml
+          kubectl kustomize kubernetes/.deploy | kubectl apply -n "services-$ENV_NAME" -f -
+          kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
+          echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"

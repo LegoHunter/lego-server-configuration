@@ -98,8 +98,12 @@ reference implementations.
 | --- | --- | --- |
 | push to `feature/**` | tests, image `quay.io/tvattima/<service>:<pushed sha>` (expires after 26 weeks), deploy | `services-sandbox` (the live preview of the feature branch being worked on; the latest push wins) |
 | PR `feature/*` -> `develop` | tests only, on the branch merged with the latest `develop` | - |
-| PR merged into `develop` | build, image (no expiry), deploy - only if `DEPLOY_DEV_ENABLED` is `true` | `services-dev` |
-| PR `develop` -> `main` merged | the same - only if `DEPLOY_PROD_ENABLED` is `true` | `services-prod` |
+| PR merged into `develop` | tests on the merge commit, then the **only** image build for that commit: `quay.io/tvattima/<service>:dev-<merge sha>` (no expiry), deployed by digest - only if `DEPLOY_DEV_ENABLED` is `true` | `services-dev` |
+| PR `develop` -> `main` merged | **no rebuild** (build once, promote by digest): checks `main` has exactly the code of the merged `develop` commit, adds the tag `prod-<main sha>` to that commit's DEV image and deploys the same digest - only if `DEPLOY_PROD_ENABLED` is `true`. Fails if DEV never built that commit. | `services-prod` |
+
+Every deploy pins the image by digest (`quay.io/tvattima/<service>@sha256:...`), so PROD runs
+byte-for-byte the image DEV ran. Consequences: release to PROD only by merging `develop` into `main`
+(never commit to `main` directly), and keep the DEV gate open whenever the PROD gate is open.
 
 ### Repository layout
 
