@@ -16,8 +16,6 @@ collections:
     path: "collections/Flickr API Requests"
   - name: "eBay API Requests"
     path: "collections/eBay API Requests"
-  - name: "UniFi Network API 10.4.57"
-    path: "D:/dev/projects/lego-collection/homelab-power-manager/bruno/unifi-network-api"
 
 specs:
 
