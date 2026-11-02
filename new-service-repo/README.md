@@ -84,7 +84,8 @@ May have to change `@SpringBootApplication` to:
     check the run, then `https://<service>.sandbox.internal.legohunter.io/actuator/health`.
 33. Allow the deploy runner into each namespace the service deploys to: the `arc-deployer`
     RoleBinding in [../github-runner/rbac/arc-deployer.yaml](../github-runner/rbac/arc-deployer.yaml)
-    (today only `services-sandbox` exists).
+    (today only `services-sandbox` exists). Each namespace also needs its `default-headers` Middleware
+    (`kubernetes/configuration-files/default-headers-<env>.yaml`, applied once per namespace).
 
 ## Service standard (HOMELAB-26)
 
@@ -163,7 +164,9 @@ The pipeline itself is [../.github/workflows/k8s-service-pipeline.yml](../.githu
 `QUAY_USERNAME` (variable) and `QUAY_TOKEN` (secret) are shared by the existing services and are
 not set per repository, so they are most likely LegoHunter organization settings.
 `DEPLOY_DEV_ENABLED` / `DEPLOY_PROD_ENABLED` are unset (gates shut) until the target namespace,
-its ExternalSecret, the `arc-deployer` RoleBinding and the environment's database exist.
+its ExternalSecret, the `arc-deployer` RoleBinding, its `default-headers` Middleware
+([../kubernetes/configuration-files/default-headers-<env>.yaml](../kubernetes/configuration-files/)) and
+the environment's database exist.
 
 To trial a pipeline change, point one service's feature branch at the pipeline's feature branch
 (`...k8s-service-pipeline.yml@feature/<branch>`), and switch back to `@develop` before merging.
@@ -224,13 +227,25 @@ with "Can't create cache file!" if that is not writable. Write any other scratch
 
 ### Kubernetes overlays
 
-The pipeline renders `kubernetes/overlays/<env>`, swaps the image tag for `quay.io/tvattima/<service>:...`,
-applies it to `services-<env>` and restarts `deployment/<service>`. Each overlay sets:
+The pipeline renders `kubernetes/overlays/<env>` with the image pinned by digest, applies it to
+`services-<env>` and waits for the rollout.
 
-* `namespace: services-<env>` and the label `app.kubernetes.io/instance: <env>` (pod template too);
+The base (`kubernetes/base`) names **no environment** (HOMELAB-26 E6): no instance label on the pod,
+a credentials volume `external-secret` with `secretName: set-by-overlay`, and an IngressRoute host
+`<service>.set-by-overlay.invalid` with TLS `set-by-overlay`. An overlay that forgets a value
+therefore fails safe instead of running against, or claiming the routes of, another environment.
+Every overlay, sandbox included, sets:
+
+* `namespace: services-<env>` and `labels: [{pairs: {app.kubernetes.io/instance: <env>}, includeTemplates: true}]`
+  (so the pod gets the label too);
 * `SPRING_PROFILES_ACTIVE=<env>,kubernetes` (`deployment-env-patch.yaml`);
-* the ExternalSecret `services-<env>-external-secret`, mounted at `/etc/.credentials`;
-* host `<service>.<env>.internal.legohunter.io` with TLS secret `<env>-internal-legohunter-io-tls`.
+* `deployment-<env>-patch.yaml`: `volumes/0/secret/secretName` = `services-<env>-external-secret`
+  (mounted at `/etc/.credentials`);
+* `ingress-patch.yaml`: host `<service>.<env>.internal.legohunter.io` and TLS secret `<env>-internal-legohunter-io-tls`.
+
+Overlays list only `../../base` as resources. Objects shared by every service in a namespace, such as
+the `default-headers` Middleware the IngressRoutes use, are created once per namespace from
+[../kubernetes/configuration-files](../kubernetes/configuration-files/) (`default-headers-<env>.yaml`), not by a service.
 
 ### Spring profiles
 
@@ -245,8 +260,8 @@ applies it to `services-<env>` and restarts `deployment/<service>`. Each overlay
 ### Tests
 
 Copy the consistency tests from `lego-data-service` (`src/test/java/.../config/`):
-`KubernetesOverlayTest` (every overlay targets its own namespace, instance, profile, secret, host
-and TLS), `SpringProfileEnvironmentTest` (every profile uses its own database key and imports) and
+`KubernetesOverlayTest` (the base names no environment; every overlay targets its own namespace,
+instance, profile, secret, host and TLS, and creates no namespace-shared objects), `SpringProfileEnvironmentTest` (every profile uses its own database key and imports) and
 `RuntimeHardeningTest` (the Containerfile and the securityContext / `/tmp` rules above).
 
 ## Library standard (HOMELAB-26)
