@@ -1,0 +1,70 @@
+name: Maven library pipeline
+
+# Shared test / publish pipeline for LCMS Maven libraries (HOMELAB-26 E2). Each library repo calls it
+# from a ~30-line .github/workflows/build-test-deploy.yml that owns the triggers; see
+# ../../new-service-repo/README.md ("Library standard") for the caller template.
+#
+# What runs on each event (the caller passes its own push / pull_request event through):
+#   push to feature/**   test, then publish the SNAPSHOT to GitHub Packages. Deliberate: a change on
+#                        a feature branch can be consumed by another repo without opening a PR.
+#   push to develop      (i.e. after a merge) test, then publish the SNAPSHOT from develop, so the
+#                        published SNAPSHOT returns to the merged code.
+#   PR into develop      tests only, against the branch merged with the latest develop. Publishes
+#                        nothing.
+# Every library publishes the version in its pom, so the latest push to any of those branches wins.
+#
+# Callers reference this file at @develop, so a change merged here reaches every library on its next
+# run. To trial a change, point one library's feature branch at this repo's feature branch.
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: >-
+          JDK used by CI. Keep it in step with java.version in pom.xml. LCMS standard is 21;
+          any other value must be a documented, ticketed exception.
+        required: false
+        type: string
+        default: '21'
+
+jobs:
+  pr-test:
+    name: PR tests
+    # Tests the PR branch merged with the latest develop, before it is merged. Publishes nothing.
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.base.ref == 'develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: temurin
+          cache: maven
+      - name: Run Maven verify
+        run: mvn --batch-mode --update-snapshots verify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-snapshot:
+    name: Publish snapshot
+    # Feature-branch and develop pushes: test, then deploy the SNAPSHOT (mvn deploy fails before
+    # publishing if any test fails).
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/feature/') || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: temurin
+          cache: maven
+      - name: Maven deploy (snapshot)
+        run: mvn --batch-mode --update-snapshots deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

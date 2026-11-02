@@ -197,3 +197,58 @@ applies it to `services-<env>` and restarts `deployment/<service>`. Each overlay
 Copy the consistency tests from `lego-data-service` (`src/test/java/.../config/`):
 `KubernetesOverlayTest` (every overlay targets its own namespace, instance, profile, secret, host
 and TLS) and `SpringProfileEnvironmentTest` (every profile uses its own database key and imports).
+
+## Library standard (HOMELAB-26)
+
+Every LCMS Maven library (published to GitHub Packages, consumed by services or other libraries)
+calls the shared library pipeline instead of carrying its own CI code. Libraries have no
+environments: they publish a `-SNAPSHOT` of the version in their `pom.xml`.
+
+| Event | What runs |
+| --- | --- |
+| push to `feature/**` | `mvn deploy`: tests, then publish the SNAPSHOT (so another repo can pick up a feature-branch change without a PR) |
+| PR -> `develop` | `mvn verify` only, on the branch merged with the latest `develop`; nothing is published |
+| push to `develop` (a merge) | `mvn deploy` from `develop`, so the published SNAPSHOT returns to the merged code |
+
+The latest push to any of those branches wins the SNAPSHOT. `main`/`master` pushes publish nothing.
+
+Copy this to `.github/workflows/build-test-deploy.yml`:
+
+```yaml
+name: Build Test Deploy
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - develop
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  pipeline:
+    uses: LegoHunter/lego-server-configuration/.github/workflows/maven-library-pipeline.yml@develop
+    with:
+      java-version: '21'
+```
+
+* Java 21 LTS, in step with `<java.version>21</java.version>` and `<release>${java.version}</release>`
+  in `pom.xml`. A different `java-version` is an exception and must name its ticket in a comment
+  (today: `bricklink-html`, `bricklink-inventory`, `bricklink-fulfillment` stay on 22 until
+  HOMELAB-27 moves them and `lego-command` onto the current libraries).
+* `pom.xml` needs `distributionManagement` for `https://maven.pkg.github.com/LegoHunter/<repo>`
+  with server id `github` (the id `setup-java` writes into `settings.xml`).
+* `.gitignore` excludes `target/`.
+
+The pipeline itself is [../.github/workflows/maven-library-pipeline.yml](../.github/workflows/maven-library-pipeline.yml).
+Trial a change the same way as the service pipeline: point one library's feature branch at
+`...maven-library-pipeline.yml@feature/<branch>` and switch back to `@develop` before merging.
