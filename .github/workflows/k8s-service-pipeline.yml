@@ -26,6 +26,10 @@ name: Kubernetes service pipeline
 # the build, tests, image and deploy. Merges into develop/main are never skipped.
 # Concurrency (E4): each environment deploys one run at a time per service; the newest waits.
 #
+# Every deploy ends with a smoke check (E10): /actuator/health/readiness through the service's
+# IngressRoute host must report UP within 2 minutes, or the run fails (GitHub then notifies the
+# person who pushed or merged).
+#
 # Every deploy pins the image by digest (quay.io/tvattima/<app>@sha256:...) through a throwaway
 # kustomization over kubernetes/overlays/<env>, so what runs is exactly what was pushed or
 # promoted, and a changed digest is what rolls the Deployment (no extra rollout restart).
@@ -237,6 +241,37 @@ jobs:
           kubectl kustomize kubernetes/.deploy | kubectl apply -n "services-$ENV_NAME" -f -
           kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
           echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Smoke check through the ingress
+        # E10: the rollout only proves the pod is ready inside the cluster. This checks the service
+        # end to end - DNS, Traefik IngressRoute, TLS certificate, default-headers Middleware - by
+        # calling /actuator/health/readiness on the host the IngressRoute actually serves. A failure
+        # fails the run, which triggers GitHub's failed-workflow notification to whoever pushed/merged.
+        env:
+          APP: ${{ inputs.app }}
+          ENV_NAME: sandbox
+        run: |
+          set -euo pipefail
+          match=$(kubectl get ingressroute "$APP" -n "services-$ENV_NAME" -o jsonpath='{.spec.routes[0].match}')
+          host=$(sed -nE 's/.*Host\(`([^`]+)`\).*/\1/p' <<<"$match")
+          if [ -z "$host" ]; then
+            echo "::error title=Smoke check failed::No Host(...) in IngressRoute $APP (services-$ENV_NAME): '$match'"
+            exit 1
+          fi
+          url="https://$host/actuator/health/readiness"
+          code=000
+          for attempt in $(seq 1 12); do
+            code=$(curl -sS -o readiness.json -w '%{http_code}' --max-time 10 "$url" 2>curl.err || true)
+            if [ "$code" = 200 ] && grep -q '"status":"UP"' readiness.json; then
+              echo "Smoke check passed on attempt $attempt: $url -> $code $(head -c 200 readiness.json)"
+              echo "Smoke check: $url -> $code $(head -c 200 readiness.json)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt: $url -> HTTP $code $(head -c 200 readiness.json 2>/dev/null) $(head -c 200 curl.err)"
+            sleep 10
+          done
+          echo "::error title=Smoke check failed::$url did not report UP within 2 minutes (last HTTP $code). The rollout succeeded inside the cluster, so check DNS, the IngressRoute, the TLS certificate and the default-headers Middleware in services-$ENV_NAME."
+          echo "**Smoke check FAILED:** $url (last HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   dev-deploy-gate:
     name: DEV deploy gate
@@ -352,6 +387,37 @@ jobs:
           kubectl kustomize kubernetes/.deploy | kubectl apply -n "services-$ENV_NAME" -f -
           kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
           echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Smoke check through the ingress
+        # E10: the rollout only proves the pod is ready inside the cluster. This checks the service
+        # end to end - DNS, Traefik IngressRoute, TLS certificate, default-headers Middleware - by
+        # calling /actuator/health/readiness on the host the IngressRoute actually serves. A failure
+        # fails the run, which triggers GitHub's failed-workflow notification to whoever pushed/merged.
+        env:
+          APP: ${{ inputs.app }}
+          ENV_NAME: dev
+        run: |
+          set -euo pipefail
+          match=$(kubectl get ingressroute "$APP" -n "services-$ENV_NAME" -o jsonpath='{.spec.routes[0].match}')
+          host=$(sed -nE 's/.*Host\(`([^`]+)`\).*/\1/p' <<<"$match")
+          if [ -z "$host" ]; then
+            echo "::error title=Smoke check failed::No Host(...) in IngressRoute $APP (services-$ENV_NAME): '$match'"
+            exit 1
+          fi
+          url="https://$host/actuator/health/readiness"
+          code=000
+          for attempt in $(seq 1 12); do
+            code=$(curl -sS -o readiness.json -w '%{http_code}' --max-time 10 "$url" 2>curl.err || true)
+            if [ "$code" = 200 ] && grep -q '"status":"UP"' readiness.json; then
+              echo "Smoke check passed on attempt $attempt: $url -> $code $(head -c 200 readiness.json)"
+              echo "Smoke check: $url -> $code $(head -c 200 readiness.json)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt: $url -> HTTP $code $(head -c 200 readiness.json 2>/dev/null) $(head -c 200 curl.err)"
+            sleep 10
+          done
+          echo "::error title=Smoke check failed::$url did not report UP within 2 minutes (last HTTP $code). The rollout succeeded inside the cluster, so check DNS, the IngressRoute, the TLS certificate and the default-headers Middleware in services-$ENV_NAME."
+          echo "**Smoke check FAILED:** $url (last HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   prod-deploy-gate:
     name: PROD deploy gate
@@ -446,3 +512,34 @@ jobs:
           kubectl kustomize kubernetes/.deploy | kubectl apply -n "services-$ENV_NAME" -f -
           kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
           echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
+      - name: Smoke check through the ingress
+        # E10: the rollout only proves the pod is ready inside the cluster. This checks the service
+        # end to end - DNS, Traefik IngressRoute, TLS certificate, default-headers Middleware - by
+        # calling /actuator/health/readiness on the host the IngressRoute actually serves. A failure
+        # fails the run, which triggers GitHub's failed-workflow notification to whoever pushed/merged.
+        env:
+          APP: ${{ inputs.app }}
+          ENV_NAME: prod
+        run: |
+          set -euo pipefail
+          match=$(kubectl get ingressroute "$APP" -n "services-$ENV_NAME" -o jsonpath='{.spec.routes[0].match}')
+          host=$(sed -nE 's/.*Host\(`([^`]+)`\).*/\1/p' <<<"$match")
+          if [ -z "$host" ]; then
+            echo "::error title=Smoke check failed::No Host(...) in IngressRoute $APP (services-$ENV_NAME): '$match'"
+            exit 1
+          fi
+          url="https://$host/actuator/health/readiness"
+          code=000
+          for attempt in $(seq 1 12); do
+            code=$(curl -sS -o readiness.json -w '%{http_code}' --max-time 10 "$url" 2>curl.err || true)
+            if [ "$code" = 200 ] && grep -q '"status":"UP"' readiness.json; then
+              echo "Smoke check passed on attempt $attempt: $url -> $code $(head -c 200 readiness.json)"
+              echo "Smoke check: $url -> $code $(head -c 200 readiness.json)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt: $url -> HTTP $code $(head -c 200 readiness.json 2>/dev/null) $(head -c 200 curl.err)"
+            sleep 10
+          done
+          echo "::error title=Smoke check failed::$url did not report UP within 2 minutes (last HTTP $code). The rollout succeeded inside the cluster, so check DNS, the IngressRoute, the TLS certificate and the default-headers Middleware in services-$ENV_NAME."
+          echo "**Smoke check FAILED:** $url (last HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

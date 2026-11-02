@@ -102,6 +102,12 @@ reference implementations.
 | PR merged into `develop` | tests on the merge commit, then the **only** image build for that commit: `quay.io/tvattima/<service>:dev-<merge sha>` (no expiry), deployed by digest - only if `DEPLOY_DEV_ENABLED` is `true` | `services-dev` |
 | PR `develop` -> `main` merged | **no rebuild** (build once, promote by digest): checks `main` has exactly the code of the merged `develop` commit, adds the tag `prod-<main sha>` to that commit's DEV image and deploys the same digest - only if `DEPLOY_PROD_ENABLED` is `true`. Fails if DEV never built that commit. | `services-prod` |
 
+Every deploy ends with a **smoke check** (E10): `https://<host from the IngressRoute>/actuator/health/readiness`
+must return 200 with `"status":"UP"` within 2 minutes, which checks DNS, Traefik, TLS and the
+`default-headers` Middleware end to end. If it does not, the run fails and GitHub sends its normal
+failed-workflow notification to whoever pushed or merged (check your GitHub notification settings for
+Actions). So every service must expose `/actuator/health/readiness` through its IngressRoute.
+
 Every deploy pins the image by digest (`quay.io/tvattima/<service>@sha256:...`), so PROD runs
 byte-for-byte the image DEV ran. Consequences: release to PROD only by merging `develop` into `main`
 (never commit to `main` directly), and keep the DEV gate open whenever the PROD gate is open.
