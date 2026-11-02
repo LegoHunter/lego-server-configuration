@@ -205,6 +205,7 @@ ENTRYPOINT ["java","-jar","/app.jar"]
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      terminationGracePeriodSeconds: 45
       containers:
         - name: <service>
           securityContext:
@@ -212,6 +213,10 @@ ENTRYPOINT ["java","-jar","/app.jar"]
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
           volumeMounts:
             - name: services-sandbox-external-secret   # keep first: overlays patch index 0
               mountPath: /etc/.credentials
@@ -226,6 +231,11 @@ ENTRYPOINT ["java","-jar","/app.jar"]
           emptyDir:
             sizeLimit: 512Mi
 ```
+
+**Drain before shutdown:** the `preStop` sleep keeps a terminating pod serving for 10s while Traefik
+drops it from its endpoints; only then does Spring Boot start its graceful shutdown (readiness
+`OUT_OF_SERVICE`, up to 30s), and `terminationGracePeriodSeconds: 45` leaves room for both. Without it
+every deploy returned 502/503 to callers for ~2s (measured: 5 failures vs 0 across a deploy).
 
 `/tmp` is the only writable path. Spring Boot needs it (Tomcat work and multipart files), and so does
 anything using `ImageIO` with streams: it caches to `imageio*.tmp` files in `java.io.tmpdir` and fails
@@ -268,7 +278,7 @@ the `default-headers` Middleware the IngressRoutes use, are created once per nam
 Copy the consistency tests from `lego-data-service` (`src/test/java/.../config/`):
 `KubernetesOverlayTest` (the base names no environment; every overlay targets its own namespace,
 instance, profile, secret, host and TLS, and creates no namespace-shared objects), `SpringProfileEnvironmentTest` (every profile uses its own database key and imports) and
-`RuntimeHardeningTest` (the Containerfile and the securityContext / `/tmp` rules above).
+`RuntimeHardeningTest` (the Containerfile, the securityContext / `/tmp` rules and the drain settings above).
 
 ## Library standard (HOMELAB-26)
 
