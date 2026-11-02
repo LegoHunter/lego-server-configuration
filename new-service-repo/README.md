@@ -171,15 +171,56 @@ To trial a pipeline change, point one service's feature branch at the pipeline's
 ### Containerfile
 
 ```dockerfile
-FROM amazoncorretto:21-alpine-jdk
+FROM eclipse-temurin:21-jre-alpine
 ARG JAR_FILE=target/*.jar
 COPY ${JAR_FILE} app.jar
+ENV HOME=/tmp
+USER 10001:10001
 ENTRYPOINT ["java","-jar","/app.jar"]
 ```
 
-* Java 21 LTS, in step with `<java.version>21</java.version>` in `pom.xml` and the caller's `java-version`.
+* Java 21 LTS, JRE only (no compiler or JDK tools), in step with `<java.version>21</java.version>` in `pom.xml` and the caller's `java-version`.
+* Numeric non-root `USER 10001:10001`, so Kubernetes can verify `runAsNonRoot`. No `RUN` steps: the arm64 image is
+  built on amd64 runners without emulation. The UID has no `/etc/passwd` entry, hence `HOME=/tmp`.
 * No `-Dspring.profiles.active`: Spring reads `SPRING_PROFILES_ACTIVE` from the environment.
 * No `quay.expires-after` label: the pipeline adds it to sandbox images only, so DEV/PROD images never expire.
+
+### Runtime hardening (base `deployment.yaml`)
+
+```yaml
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: <service>
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: services-sandbox-external-secret   # keep first: overlays patch index 0
+              mountPath: /etc/.credentials
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: services-sandbox-external-secret
+          secret:
+            secretName: services-sandbox-external-secret
+        - name: tmp
+          emptyDir:
+            sizeLimit: 512Mi
+```
+
+`/tmp` is the only writable path. Spring Boot needs it (Tomcat work and multipart files), and so does
+anything using `ImageIO` with streams: it caches to `imageio*.tmp` files in `java.io.tmpdir` and fails
+with "Can't create cache file!" if that is not writable. Write any other scratch files under `/tmp`.
 
 ### Kubernetes overlays
 
@@ -205,7 +246,8 @@ applies it to `services-<env>` and restarts `deployment/<service>`. Each overlay
 
 Copy the consistency tests from `lego-data-service` (`src/test/java/.../config/`):
 `KubernetesOverlayTest` (every overlay targets its own namespace, instance, profile, secret, host
-and TLS) and `SpringProfileEnvironmentTest` (every profile uses its own database key and imports).
+and TLS), `SpringProfileEnvironmentTest` (every profile uses its own database key and imports) and
+`RuntimeHardeningTest` (the Containerfile and the securityContext / `/tmp` rules above).
 
 ## Library standard (HOMELAB-26)
 
