@@ -5,3 +5,78 @@ meta {
 vars:pre-request {
   bricklink_rest_base_url: https://api.bricklink.com/api/store/v1
 }
+
+script:pre-request {
+  // Signs every BrickLink REST request with OAuth 1.0a (HMAC-SHA1) and sets the Authorization header.
+  // Needs the "Bricklink API" environment with bricklink_consumer_key, bricklink_consumer_secret,
+  // bricklink_token_value and bricklink_token_secret filled in. The secrets sign the request but are
+  // never sent. Timestamp, nonce and signature are fresh on every send.
+  const CryptoJS = require("crypto-js");
+  const DEFAULTS = { bricklink_rest_base_url: "https://api.bricklink.com/api/store/v1" };
+
+  function lookup(name) {
+    for (const getter of ["getVar", "getRequestVar", "getFolderVar", "getEnvVar", "getCollectionVar", "getGlobalEnvVar"]) {
+      if (typeof bru[getter] === "function") {
+        const value = bru[getter](name);
+        if (value !== undefined && value !== null && value !== "") {
+          return String(value);
+        }
+      }
+    }
+    return DEFAULTS[name];
+  }
+
+  function interpolate(text) {
+    return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, name) => {
+      const value = lookup(name);
+      return value === undefined ? match : value;
+    });
+  }
+
+  // RFC 3986 percent-encoding, as OAuth 1.0a requires.
+  const enc = (s) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  const dec = (s) => decodeURIComponent(s.replace(/\+/g, " "));
+
+  const url = interpolate(req.getUrl());
+  if (/\{\{/.test(url)) {
+    throw new Error("BrickLink signing: the URL still has an unresolved variable: " + url);
+  }
+  const consumerKey = lookup("bricklink_consumer_key");
+  const consumerSecret = lookup("bricklink_consumer_secret");
+  const token = lookup("bricklink_token_value");
+  const tokenSecret = lookup("bricklink_token_secret");
+  if (![consumerKey, consumerSecret, token, tokenSecret].every(Boolean)) {
+    throw new Error("BrickLink signing: select the \"Bricklink API\" environment and fill in the consumer key and secret and the token value and secret");
+  }
+
+  const oauth = {
+    oauth_consumer_key: consumerKey,
+    oauth_token: token,
+    oauth_signature_method: "HMAC-SHA1",
+    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
+    oauth_nonce: CryptoJS.lib.WordArray.random(16).toString(),
+    oauth_version: "1.0",
+  };
+
+  const [baseUrl, query = ""] = url.split("?");
+  const params = Object.entries(oauth).map(([k, v]) => [enc(k), enc(v)]);
+  for (const pair of query.split("&")) {
+    if (!pair) continue;
+    const at = pair.indexOf("=");
+    const key = at < 0 ? pair : pair.slice(0, at);
+    const value = at < 0 ? "" : pair.slice(at + 1);
+    params.push([enc(dec(key)), enc(dec(value))]);
+  }
+  params.sort((a, b) => (a[0] === b[0] ? (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0) : a[0] < b[0] ? -1 : 1));
+  const paramString = params.map(([k, v]) => k + "=" + v).join("&");
+  const baseString = [req.getMethod().toUpperCase(), enc(baseUrl), enc(paramString)].join("&");
+  const signature = CryptoJS.HmacSHA1(baseString, enc(consumerSecret) + "&" + enc(tokenSecret)).toString(CryptoJS.enc.Base64);
+
+  bru.setVar("bricklink_oauth_timestamp", oauth.oauth_timestamp);
+  bru.setVar("bricklink_oauth_nonce", oauth.oauth_nonce);
+  bru.setVar("bricklink_oauth_signature", signature);
+  const header = Object.entries({ ...oauth, oauth_signature: signature })
+    .map(([k, v]) => k + "=\"" + enc(v) + "\"")
+    .join(", ");
+  req.setHeader("Authorization", "OAuth " + header);
+}

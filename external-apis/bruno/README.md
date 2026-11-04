@@ -56,6 +56,7 @@ Each individual collection also has its own populated `environments/` folder wit
 
 ## Notes
 
-- BrickLink REST and Flickr write requests require OAuth 1.0 signatures. The workspace includes placeholder variables for timestamp, nonce, and signature values.
+- BrickLink REST requests are signed automatically. The `Bricklink API Requests` collection has a pre-request script that computes the OAuth 1.0a HMAC-SHA1 signature and sets the `Authorization` header on every send. Select the `Bricklink API` environment and fill in `bricklink_consumer_key`, `bricklink_consumer_secret`, `bricklink_token_value` and `bricklink_token_secret` (from BrickLink's API registration page). The secrets only sign the request; they are never sent. The `bricklink_oauth_timestamp`, `bricklink_oauth_nonce` and `bricklink_oauth_signature` variables are overwritten on each send. BrickLink tokens are bound to an IP address, so a `TOKEN_IP_MISMATCHED` error means the token must be registered for the public IP you are calling from.
+- Flickr write requests still require OAuth 1.0 signatures; that collection has only placeholder variables for timestamp, nonce, and signature values.
 - BrickLink `Inventory - Create Inventory` is intentionally stockroom-only in its sample body. Do not send it against the live account without deliberately reviewing the target environment and payload.
 - The external API folders are representative of the APIs used or planned by LegoHunter, not exhaustive vendor API mirrors.
