@@ -52,3 +52,17 @@ kubectl apply -f grafana-ingressroute.yaml -n monitoring
 helm uninstall grafana -n monitoring
 ```
 
+
+### Dashboards
+
+Dashboard JSON lives in `grafana/dashboards/` and is imported by hand (Dashboards > New > Import).
+No provisioning config loads it.
+
+| File | Dashboard | What it covers |
+| --- | --- | --- |
+| `lego-data-ingress.json` | Lego Data Ingress - Pipelines | lego-data-ingress service health, photo ingestion, Flickr sync, HTTP/Kafka, the Pricing Plane, and the marketplace reconciliation and lower-environment lot audit |
+
+Import over the existing dashboard: the file keeps its original `uid`
+(`lego-data-ingress-photo-pipeline`, from before the file was renamed), so Grafana replaces the
+dashboard in place instead of creating a copy. Choose the Prometheus data source for
+`DS_PROMETHEUS` when asked.
