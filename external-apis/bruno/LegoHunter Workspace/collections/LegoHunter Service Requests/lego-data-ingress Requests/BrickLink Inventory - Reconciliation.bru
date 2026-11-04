@@ -1,0 +1,24 @@
+meta {
+  name: BrickLink Inventory - Reconciliation
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{lego_data_ingress_base_url}}/internal/bricklink/inventory/reconciliation
+  body: none
+  auth: none
+}
+
+docs {
+  Runs the BrickLink inventory reconciliation now instead of waiting for the hourly job.
+
+  Read-only: one BrickLink store read, no writes to BrickLink or the database. The result also updates the
+  bricklink_inventory_reconciliation_* metrics, as a scheduled run would.
+
+  Compares every ACTIVE local BrickLink listing with its lot and reports drift by type: MISSING_REMOTE_LOT,
+  PRICE_DRIFT (skipped while a price change is in flight), QUANTITY_DRIFT, VISIBILITY_DRIFT, REMARKS_DRIFT
+  and UNTRACKED_REMOTE_LOT. Outcome: IN_SYNC, DRIFT_FOUND or FAILED.
+
+  Returns 404 when lego.bricklink.inventory-reconciliation.enabled is false in the target environment.
+}

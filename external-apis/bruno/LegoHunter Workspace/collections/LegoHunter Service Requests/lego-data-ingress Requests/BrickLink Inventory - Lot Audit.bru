@@ -1,0 +1,24 @@
+meta {
+  name: BrickLink Inventory - Lot Audit
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{lego_data_ingress_base_url}}/internal/bricklink/inventory/lot-audit
+  body: none
+  auth: none
+}
+
+docs {
+  Runs the lower-environment lot audit now instead of waiting for the 30-minute job.
+
+  Read-only: one BrickLink store read (every lot in every stockroom), no writes. The result also updates the
+  bricklink_lot_audit_* metrics, as a scheduled run would.
+
+  Flags every lot tagged LEGOHUNTER_ENV=<non-prod> that is LOWER_ENV_LOT_PUBLIC, LOWER_ENV_LOT_IN_PROD_STOCKROOM
+  (stockroom A) or LOWER_ENV_LOT_IN_WRONG_STOCKROOM (SANDBOX must be C, DEV must be B). Outcome: CLEAN,
+  VIOLATIONS_FOUND or FAILED. Any violation needs action: move the lot back by hand on BrickLink.
+
+  Returns 404 when lego.bricklink.lot-audit.enabled is false in the target environment.
+}
