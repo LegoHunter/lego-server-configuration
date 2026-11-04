@@ -3223,7 +3223,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "this environment",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
@@ -3263,7 +3263,34 @@
           },
           "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(remote_lots|audit lots_checked)$"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "whole store"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -3310,7 +3337,7 @@
       ],
       "title": "Reconciliation Lots Compared",
       "type": "timeseries",
-      "description": "remote_lots: every lot in the store; owned_remote_lots: lots tagged for this environment; local_listings: ACTIVE local listings with a lot; matched_listings: listings whose lot was found; in_flight_listings: listings with a price change in flight."
+      "description": "remote_lots: every lot in the store; owned_remote_lots: lots tagged for this environment; local_listings: ACTIVE local listings with a lot; matched_listings: listings whose lot was found; in_flight_listings: listings with a price change in flight. The whole-store series (remote_lots, audit lots_checked) use the dashed lines and the right axis, so the environment-sized counts keep their own scale."
     },
     {
       "datasource": {
@@ -3523,6 +3550,6 @@
   "timezone": "browser",
   "title": "Lego Data Ingress - Pipelines",
   "uid": "lego-data-ingress-photo-pipeline",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
