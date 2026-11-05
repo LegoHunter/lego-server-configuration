@@ -60,7 +60,7 @@ No provisioning config loads it.
 
 | File | Dashboard | What it covers |
 | --- | --- | --- |
-| `lego-data-ingress.json` | Lego Data Ingress - Pipelines | lego-data-ingress service health, photo ingestion, Flickr sync, HTTP/Kafka, the Pricing Plane, and the marketplace reconciliation and lower-environment lot audit |
+| `lego-data-ingress.json` | Lego Data Ingress - Pipelines | lego-data-ingress service health, photo ingestion, Flickr sync, HTTP/Kafka, the Pricing Plane (including pricing data-quality gaps), and the marketplace reconciliation and lower-environment lot audit |
 
 Import over the existing dashboard: the file keeps its original `uid`
 (`lego-data-ingress-photo-pipeline`, from before the file was renamed), so Grafana replaces the
