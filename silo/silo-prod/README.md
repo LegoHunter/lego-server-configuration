@@ -15,9 +15,9 @@ SANDBOX and DEV still use `minio-dev`, until `silo-dev` replaces it (HOMELAB-54)
 | S3 in-cluster | `http://silo-prod.silo-prod.svc.cluster.local:9000` |
 | S3 external | `https://api.silo.prod.internal.legohunter.io` |
 | Console | https://console.silo.prod.internal.legohunter.io |
-| Buckets | `lego-photos-prod` (photo uploads under `photos/`, plus the final photos), `lego-catalogs-prod` (`bricklink/…`, `rebrickable/…` uploads) |
+| Buckets | `lego-uploads-prod` (everything that comes in: `photos/`, `bricklink/…`, `rebrickable/…`) and `lego-photos-prod` (the final scaled photos), the same layout as SANDBOX's `lego-uploads-sandbox` / `lego-photos-sandbox` |
 | Users | root (from Infisical) and `lcms-ingress` (policy `lcms-ingress-prod`: objects in the two buckets only) |
-| Events | `lego-photos-prod` put and delete, `lego-catalogs-prod` put → redpanda-prod `prod-s3-events`, as `prodproducer` |
+| Events | `lego-uploads-prod` puts and `lego-photos-prod` deletes → redpanda-prod `prod-s3-events`, as `prodproducer` |
 | Chart | `helm/silo` from github.com/pgsty/silo at tag `RELEASE.2026-10-26T00-00-00Z` (chart 7.0.3); images pinned to the same release |
 
 The names follow the owner's rule: infrastructure is called **silo**, and application config
@@ -46,7 +46,7 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
 | 3 | `../../redpanda/redpanda-prod/05-redpanda-prod-users-and-topics.sh`, then delete the empty old topic: `rpk topic delete prod-minio-s3-events` | `prod-s3-events` exists and `prod-minio-s3-events` is gone |
 | 4 | `git clone --depth 1 --branch RELEASE.2026-10-26T00-00-00Z https://github.com/pgsty/silo`, then `helm upgrade --install silo-prod silo/helm/silo -n silo-prod -f 03-silo-prod-values.yaml` | 4 pods Running on 07/08/09/10; 16 PVCs of 75Gi; `mc admin info` shows 16/16 drives online; the post-install job Succeeded; both buckets, the user, the policy and the event rules exist |
 | 5 | `kubectl apply -f 04-silo-prod-tls-and-routes.yaml` | The certificate is Ready; the console URL loads with the Let's Encrypt cert; `https://api.silo.prod…/minio/health/live` returns 200 |
-| 6 | End-to-end check: as `lcms-ingress`, put and delete a test object in `lego-photos-prod` (outside `photos/`), then read `prod-s3-events` | Two events arrive (`s3:ObjectCreated:Put`, `s3:ObjectRemoved:Delete`). Nothing consumes them yet, and ingress PROD will log them as not routable |
+| 6 | End-to-end check: as `lcms-ingress`, put a test object in `lego-uploads-prod` under `poc/`, then delete it; read `prod-s3-events` | One `s3:ObjectCreated:Put` event arrives (deletes in the uploads bucket are not subscribed). ingress PROD isn't running yet; when it starts it will log the `poc/` key as not routable |
 
 ## Notes
 

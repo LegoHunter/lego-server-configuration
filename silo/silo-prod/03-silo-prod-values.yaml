@@ -9,8 +9,8 @@
 #   Placement  rasppi5-07, -08, -09, -10, one server per node (05 and 06 are kept for
 #              redpanda-prod)
 #   Growth     add a second pool at about 70% full; MinIO/Silo do not grow by enlarging drives
-#   Events     put/delete on the PROD buckets -> redpanda-prod topic prod-s3-events, as
-#              prodproducer (SASL SCRAM-SHA-512)
+#   Events     lego-uploads-prod puts and lego-photos-prod deletes -> redpanda-prod topic
+#              prod-s3-events, as prodproducer (SASL SCRAM-SHA-512)
 #   Access     api.silo.prod.internal.legohunter.io and console.silo.prod.internal.legohunter.io
 #              through Traefik (04-silo-prod-tls-and-routes.yaml); the chart's own Ingresses are off
 
@@ -101,17 +101,18 @@ extraVolumeMounts:
   - name: notify-queue
     mountPath: /silo-notify-queue
 
-# Buckets
-#   lego-photos-prod    photo uploads (photos/...) and the final scaled photos (<dir>/<dir>/<md5>.jpg)
-#   lego-catalogs-prod  BrickLink and Rebrickable catalog uploads (bricklink/..., rebrickable/...)
-# lego-data-ingress routes by key prefix and treats only the final-photo bucket specially
-# (lego.s3.buckets.final-photo = lego-photos-prod).
+# Buckets (the same layout as SANDBOX's lego-uploads-sandbox and lego-photos-sandbox)
+#   lego-uploads-prod  everything that comes in: photos/ (plus photos/duplicate/ and photos/rejected/,
+#                      which ingress moves files into), bricklink/catalog|category/,
+#                      rebrickable/catalog|category/
+#   lego-photos-prod   the final scaled photos ingress writes (<dir>/<dir>/<md5>.jpg)
+#                      (lego.s3.buckets.final-photo = lego-photos-prod)
 buckets:
   - name: lego-photos-prod
     policy: none
     purge: false
     versioning: false
-  - name: lego-catalogs-prod
+  - name: lego-uploads-prod
     policy: none
     purge: false
     versioning: false
@@ -123,7 +124,7 @@ policies:
       - effect: Allow
         resources:
           - "arn:aws:s3:::lego-photos-prod/*"
-          - "arn:aws:s3:::lego-catalogs-prod/*"
+          - "arn:aws:s3:::lego-uploads-prod/*"
         actions:
           - "s3:GetObject"
           - "s3:PutObject"
@@ -133,7 +134,7 @@ policies:
       - effect: Allow
         resources:
           - "arn:aws:s3:::lego-photos-prod"
-          - "arn:aws:s3:::lego-catalogs-prod"
+          - "arn:aws:s3:::lego-uploads-prod"
         actions:
           - "s3:GetBucketLocation"
           - "s3:ListBucket"
@@ -146,11 +147,12 @@ users:
     policy: lcms-ingress-prod
 
 # Bucket event rules, which the chart has no setting for. --ignore-existing makes re-runs safe.
-# Photo bucket: puts (new uploads) and deletes (final-photo deletion pipeline).
-# Catalog bucket: puts only.
+# Uploads bucket: puts. Every new file is routed by key prefix (photos/, bricklink/, rebrickable/).
+# Photos bucket: deletes only, which feed the final-photo deletion pipeline. ingress writes the puts itself, and
+# they would only be logged as not routable.
 customCommands:
-  - command: "event add mysilo/lego-photos-prod arn:minio:sqs::PRIMARY:kafka --event put,delete --ignore-existing"
-  - command: "event add mysilo/lego-catalogs-prod arn:minio:sqs::PRIMARY:kafka --event put --ignore-existing"
+  - command: "event add mysilo/lego-uploads-prod arn:minio:sqs::PRIMARY:kafka --event put --ignore-existing"
+  - command: "event add mysilo/lego-photos-prod arn:minio:sqs::PRIMARY:kafka --event delete --ignore-existing"
 
 podDisruptionBudget:
   enabled: true
