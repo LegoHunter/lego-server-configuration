@@ -48,6 +48,14 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
 **Commissioned 2026-11-07:** v26.1.17. Brokers 0/1/2 are on rasppi5-10/06/05 and got
 10.0.2.110/.111/.112. Health is good, retention is 30 days, RF is 3, and the external certificate
 is Let's Encrypt `prod.internal.legohunter.io` plus its wildcard.
+Step 5 created 2 users, 12 topics (RF 3; upload-photo has 12 partitions) and 6 prefixed ACLs.
+Re-running it changes nothing. Both users log in, and prodconsumer is refused when it tries to
+create a topic. Step 7: the console (v3.14.0) connects as admin, sees 3 brokers and 13 topics, and
+serves its own Let's Encrypt certificate.
+
+**Traefik gotcha:** Traefik runs with `--providers.kubernetescrd.ingressClass=traefik`, so every
+IngressRoute needs the annotation `kubernetes.io/ingress.class: traefik`. Without it, the route is
+ignored and Traefik serves its default self-signed certificate.
 
 After step 4, check the operator's chosen values:
 - `kubectl get sts -n redpanda-prod redpanda-prod -o jsonpath='{.spec.template.spec.affinity}'`

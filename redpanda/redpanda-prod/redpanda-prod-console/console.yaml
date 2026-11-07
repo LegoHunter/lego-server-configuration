@@ -105,6 +105,10 @@ kind: IngressRoute
 metadata:
   name: redpanda-prod-console
   namespace: redpanda-prod
+  annotations:
+    # Required: Traefik runs with --providers.kubernetescrd.ingressClass=traefik and ignores
+    # IngressRoutes without this annotation (it then serves its default self-signed cert).
+    kubernetes.io/ingress.class: traefik
 spec:
   entryPoints:
     - websecure
