@@ -1,0 +1,10 @@
+# Namespace for the LCMS application services in PROD (lego-data-service, lego-data-ingress).
+# Secrets reach the services through services-prod-external-secret, which reads Infisical's
+# Production environment (see external-secrets/README.md).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: services-prod
+  labels:
+    environment: prod
+    app.kubernetes.io/part-of: lcms

@@ -1,0 +1,10 @@
+# Namespace for the LCMS application services in DEV (lego-data-service, lego-data-ingress).
+# Secrets reach the services through services-dev-external-secret, which reads Infisical's
+# Development environment (see external-secrets/README.md).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: services-dev
+  labels:
+    environment: dev
+    app.kubernetes.io/part-of: lcms
