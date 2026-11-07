@@ -1,0 +1,6 @@
+# Namespace for the LCMS application services in SANDBOX, as it exists in the cluster
+# (created 2025, no labels of its own). Kept here for reference.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: services-sandbox

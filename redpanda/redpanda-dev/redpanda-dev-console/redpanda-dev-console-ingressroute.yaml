@@ -1,0 +1,20 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: redpanda-dev-console
+  namespace: redpanda-dev
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - match: Host(`console.redpanda.dev.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - name: redpanda-dev-console
+          port: 80
+
+  tls:
+    secretName: redpanda-dev-console-tls

@@ -1,0 +1,2 @@
+# Shell scripts run on the Linux hosts; keep them LF even on Windows checkouts (core.autocrlf=true).
+*.sh text eol=lf

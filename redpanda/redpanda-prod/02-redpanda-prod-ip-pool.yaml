@@ -1,0 +1,30 @@
+# MetalLB addresses for the three redpanda-prod broker load balancers (one per broker).
+#
+# The PROD range is 10.0.2.110-115. This pool holds exactly three addresses, so the brokers
+# always get 110-112. 113-115 are left free for a fourth broker or other PROD services.
+#
+# The Redpanda operator creates the per-broker Services (lb-redpanda-prod-0/1/2) and gives them
+# all the same annotations, so a particular address cannot be pinned to a particular broker.
+# Read the actual assignment after the first start (README step 6) before adding the broker
+# DNS records.
+#
+# autoAssign: false - only Services that ask for this pool by name (the brokers) get these
+# addresses.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: redpanda-prod-ip-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.0.2.110-10.0.2.112
+  autoAssign: false
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: redpanda-prod-l2-advertisement
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - redpanda-prod-ip-pool

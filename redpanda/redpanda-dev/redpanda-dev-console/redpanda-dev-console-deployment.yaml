@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda-dev-console
+  namespace: redpanda-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda-dev-console
+  template:
+    metadata:
+      labels:
+        app: redpanda-dev-console
+    spec:
+      containers:
+        - name: console
+          image: docker.redpanda.com/redpandadata/console:latest
+          args: ["--config.filepath=/etc/redpanda/config.yaml"]
+
+          ports:
+            - containerPort: 8080
+
+          env:
+            - name: REDPANDA_DEV_CONSOLE_ADMIN_USERNAME
+              value: admin
+
+            - name: REDPANDA_DEV_CONSOLE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redpanda-users
+                  key: admin_password
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redpanda
+
+      volumes:
+        - name: config
+          configMap:
+            name: redpanda-dev-console-config

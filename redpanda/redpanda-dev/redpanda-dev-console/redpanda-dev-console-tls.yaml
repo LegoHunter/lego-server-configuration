@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: redpanda-dev-console-tls
+  namespace: redpanda-dev
+spec:
+  secretName: redpanda-dev-console-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  commonName: console.redpanda.dev.internal.legohunter.io
+  dnsNames:
+    - console.redpanda.dev.internal.legohunter.io
