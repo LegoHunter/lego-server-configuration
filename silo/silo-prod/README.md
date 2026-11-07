@@ -46,7 +46,14 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
 | 3 | `../../redpanda/redpanda-prod/05-redpanda-prod-users-and-topics.sh`, then delete the empty old topic: `rpk topic delete prod-minio-s3-events` | `prod-s3-events` exists and `prod-minio-s3-events` is gone |
 | 4 | `git clone --depth 1 --branch RELEASE.2026-10-26T00-00-00Z https://github.com/pgsty/silo`, then `helm upgrade --install silo-prod silo/helm/silo -n silo-prod -f 03-silo-prod-values.yaml` | 4 pods Running on 07/08/09/10; 16 PVCs of 75Gi; `mc admin info` shows 16/16 drives online; the post-install job Succeeded; both buckets, the user, the policy and the event rules exist |
 | 5 | `kubectl apply -f 04-silo-prod-tls-and-routes.yaml` | The certificate is Ready; the console URL loads with the Let's Encrypt cert; `https://api.silo.prod…/minio/health/live` returns 200 |
-| 6 | End-to-end check: as `lcms-ingress`, put a test object in `lego-uploads-prod` under `poc/`, then delete it; read `prod-s3-events` | One `s3:ObjectCreated:Put` event arrives (deletes in the uploads bucket are not subscribed). ingress PROD isn't running yet; when it starts it will log the `poc/` key as not routable |
+| 6 | End-to-end check: as `lcms-ingress`, put a test object in `lego-uploads-prod` under `poc/`, then delete it; read `prod-s3-events` | One `s3:ObjectCreated:*` event arrives, with principal `lcms-ingress` (deletes in the uploads bucket are not subscribed). `mc pipe` uploads as multipart, so the event is `s3:ObjectCreated:CompleteMultipartUpload`; ingress accepts every `s3:ObjectCreated:` event. `lcms-ingress` is refused bucket creation and admin calls. ingress PROD isn't running yet; when it starts it will log the `poc/` key as not routable |
+
+## Commissioning record
+
+Commissioned on 2026-11-07 (steps 0–6):
+- 4 servers on rasppi5-07/09/10/08; 16/16 drives online, EC:4, 900 GiB usable.
+- Let's Encrypt certificate valid until 2027-02-05.
+- The end-to-end event reached `prod-s3-events` partition 1, offset 0.
 
 ## Notes
 
@@ -56,5 +63,7 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
 - **Growth.** Add a second pool, i.e. another `pools` entry with new servers and drives, at
   about 70% full. Do not enlarge drives.
 - **Client.** Use Silo's client image `pgsty/mc` (the binary is `mc`; Silo's docs call it `mcli`).
-  The chart's jobs register the target as `mysilo`.
+  The chart's jobs register the target as `mysilo`. The image has no `grep` or `sed`, so filter output outside the pod. For a check, run a
+  short-lived `pgsty/mc` pod that reads credentials with `secretKeyRef`, so they never pass
+  through a shell.
 - **Traefik.** Every IngressRoute needs the annotation `kubernetes.io/ingress.class: traefik`.
