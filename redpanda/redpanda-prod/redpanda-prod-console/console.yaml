@@ -1,0 +1,118 @@
+# Redpanda Console for PROD: https://console.redpanda.prod.internal.legohunter.io/overview
+#
+# Same layout as the dev console (../../redpanda-dev/redpanda-dev-console/), with two differences:
+#   - The admin password is NOT in the ConfigMap. The console reads it from the environment variable
+#     KAFKA_SASL_PASSWORD, which comes from the redpanda-users Secret. (Dev's ConfigMap holds it in
+#     plain text.)
+#   - The image is pinned to the digest dev runs, instead of :latest.
+#
+# The console has no login of its own (that is an Enterprise feature). Anyone on the internal
+# network who can reach Traefik can browse PROD topics, the same as dev.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redpanda-prod-console-config
+  namespace: redpanda-prod
+data:
+  # https://docs.redpanda.com/current/console/config/configure-console/
+  config.yaml: |
+    kafka:
+      brokers:
+        - redpanda-prod-0.redpanda-prod.redpanda-prod.svc.cluster.local:9092
+        - redpanda-prod-1.redpanda-prod.redpanda-prod.svc.cluster.local:9092
+        - redpanda-prod-2.redpanda-prod.redpanda-prod.svc.cluster.local:9092
+      tls:
+        enabled: false
+      sasl:
+        enabled: true
+        mechanism: SCRAM-SHA-512
+        username: admin
+        # password: from the KAFKA_SASL_PASSWORD environment variable (Secret redpanda-users)
+    server:
+      listenAddress: "0.0.0.0"
+      listenPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda-prod-console
+  namespace: redpanda-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda-prod-console
+  template:
+    metadata:
+      labels:
+        app: redpanda-prod-console
+    spec:
+      containers:
+        - name: console
+          # Same image digest the dev console runs (2026-11-07).
+          image: docker.redpanda.com/redpandadata/console@sha256:d72608f64c65a5631adca6c99b44d157cefb9edb0473ed58451f91affcfcfa1b
+          args: ["--config.filepath=/etc/redpanda/config.yaml"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redpanda-users
+                  key: admin_password
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redpanda
+      volumes:
+        - name: config
+          configMap:
+            name: redpanda-prod-console-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda-prod-console
+  namespace: redpanda-prod
+spec:
+  selector:
+    app: redpanda-prod-console
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: redpanda-prod-console-tls
+  namespace: redpanda-prod
+spec:
+  secretName: redpanda-prod-console-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  commonName: console.redpanda.prod.internal.legohunter.io
+  dnsNames:
+    - console.redpanda.prod.internal.legohunter.io
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: redpanda-prod-console
+  namespace: redpanda-prod
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`console.redpanda.prod.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - name: redpanda-prod-console
+          port: 80
+  tls:
+    secretName: redpanda-prod-console-tls

@@ -1,0 +1,85 @@
+# https://docs.redpanda.com/current/reference/k-crd/#k8s-api-github-com-redpanda-data-redpanda-operator-operator-api-redpanda-v1alpha2-redpandaclusterspec
+apiVersion: cluster.redpanda.com/v1alpha2
+kind: Redpanda
+metadata:
+  name: redpanda-dev
+  namespace: redpanda-dev
+
+spec:
+  # https://docs.redpanda.com/current/reference/k-crd/#k8s-api-github-com-redpanda-data-redpanda-operator-operator-api-redpanda-v1alpha2-redpandaclusterspec
+  clusterSpec:
+    statefulset:
+      replicas: 3
+
+    storage:
+      persistentVolume:
+        enabled: true
+        size: 20Gi
+        storageClass: topolvm-provisioner
+
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+
+    listeners:
+      kafka:
+        port: 9092
+        tls:
+          enabled: false
+
+        external:
+          default:
+            advertisedPorts:
+              - 31092
+            enabled: true
+            tls:
+              enabled: true
+              requireClientAuth: false
+
+      http:
+        external:
+          default:
+            advertisedPorts:
+            - 30082
+            enabled: true
+
+      admin:
+        external:
+          default:
+            advertisedPorts:
+            - 31644
+            enabled: true
+        tls:
+          enabled: true
+          requireClientAuth: false
+
+      rpc:
+        port: 33145
+
+    auth:
+      sasl:
+        enabled: true
+        mechanism: SCRAM-SHA-512
+        secretRef: redpanda-dev-superusers
+
+    tls:
+      certs:
+        external:
+          caEnabled: false
+          issuerRef:
+            kind: ClusterIssuer
+            name: letsencrypt-production
+      enabled: true
+
+    external:
+      enabled: true
+      domain: dev.internal.legohunter.io
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/address-pool: redpanda-dev-ip-pool
+        external-dns.alpha.kubernetes.io/access: public
+
+    console:
+      enabled: false
+

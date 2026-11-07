@@ -1,5 +1,18 @@
 # Redpanda
 
+| Folder | What |
+|---|---|
+| `redpanda-dev/` | The live `redpanda-dev` cluster, shared by SANDBOX and DEV, as deployed (copied from rasppi5-01, 2026-11-07) |
+| `redpanda-prod/` | The dedicated PROD cluster (HOMELAB-47), with step-by-step commissioning |
+
+Everything below is the original install log for redpanda-dev, kept for history. The topic,
+user and ACL commands in it do not match what lego-data-ingress uses today; see each folder's
+README instead.
+
+---
+
+## Original install log (historical)
+
 ### Installing rpk
 
 ssh into 10.0.2.52
