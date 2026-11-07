@@ -57,6 +57,7 @@ After step 4, check the operator's chosen values:
   used `superusers.txt` on rasppi5-01.
 - **The console password is not in a ConfigMap.** It comes from the `KAFKA_SASL_PASSWORD`
   environment variable.
-- **Pinned images:** console by digest, Redpanda `v26.1.6`.
+- **Pinned, newer images:** Redpanda `v26.1.17` (dev: v26.1.6) and console `v3.14.0` (dev: v3.13.1).
+  Bringing the operator and dev up to date, and the move to 26.2, are HOMELAB-49.
 - **No external-dns annotation.** DNS records are added by hand in Technitium.
 - **Users, topics and ACLs are scripted.** Dev's exist only in the broker.

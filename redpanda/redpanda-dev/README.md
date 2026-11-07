@@ -17,6 +17,6 @@ Known differences from what is deployed, and known issues:
   `superusers.txt` file on rasppi5-01; no manifest creates it.
 - **Users, topics and ACLs were made by hand with `rpk`.** Nothing records them except the broker;
   the commands in `../README.md` are historical and do not match the topics ingress uses today.
-- **The console runs `:latest`** (the digest running on 2026-11-07 is pinned in PROD's console).
+- **The console runs `:latest`** (v3.13.1 on 2026-11-07).
 - **The external-dns annotations do nothing.** No external-dns is deployed; DNS records are added
   by hand in Technitium (`redpanda-dev-0/1/2.dev.internal.legohunter.io` → 10.0.2.101/.102/.100).

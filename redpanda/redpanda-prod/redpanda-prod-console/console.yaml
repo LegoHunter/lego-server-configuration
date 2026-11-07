@@ -4,7 +4,8 @@
 #   - The admin password is NOT in the ConfigMap. The console reads it from the environment variable
 #     KAFKA_SASL_PASSWORD, which comes from the redpanda-users Secret. (Dev's ConfigMap holds it in
 #     plain text.)
-#   - The image is pinned to the digest dev runs, instead of :latest.
+#   - The image is pinned to a version tag (v3.14.0, latest on 2026-11-07) instead of :latest. Dev runs
+#     v3.13.1.
 #
 # The console has no login of its own (that is an Enterprise feature). Anyone on the internal
 # network who can reach Traefik can browse PROD topics, the same as dev.
@@ -49,8 +50,7 @@ spec:
     spec:
       containers:
         - name: console
-          # Same image digest the dev console runs (2026-11-07).
-          image: docker.redpanda.com/redpandadata/console@sha256:d72608f64c65a5631adca6c99b44d157cefb9edb0473ed58451f91affcfcfa1b
+          image: docker.redpanda.com/redpandadata/console:v3.14.0
           args: ["--config.filepath=/etc/redpanda/config.yaml"]
           ports:
             - containerPort: 8080

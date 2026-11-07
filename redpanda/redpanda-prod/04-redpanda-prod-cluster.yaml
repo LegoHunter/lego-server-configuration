@@ -12,7 +12,9 @@
 #              hand in Technitium.
 #   SASL       superusers come from redpanda-prod-superusers, which ExternalSecrets builds from
 #              Infisical Production.
-#   Image      pinned to v26.1.6, the version dev runs (operator v26.1.3).
+#   Image      pinned to v26.1.17 (dev runs v26.1.6). This is the newest 26.1 patch with public tags and release
+#              notes, and it includes the fix for the 26.1.16 'do not install' bug. 26.1.18-20 are on Docker Hub
+#              but untagged and without notes. The operator (v26.1.3) manages 26.1.x. The 26.2 upgrade is HOMELAB-49.
 #
 # CRD reference:
 # https://docs.redpanda.com/current/reference/k-crd/#k8s-api-github-com-redpanda-data-redpanda-operator-operator-api-redpanda-v1alpha2-redpandaclusterspec
@@ -28,7 +30,7 @@ spec:
       environment: prod
 
     image:
-      tag: v26.1.6
+      tag: v26.1.17
 
     statefulset:
       replicas: 3
