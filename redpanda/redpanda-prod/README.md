@@ -45,6 +45,10 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
 
 (`repdanda.com/type` is the operator's own misspelling of the label.)
 
+**Commissioned 2026-11-07:** v26.1.17. Brokers 0/1/2 are on rasppi5-10/06/05 and got
+10.0.2.110/.111/.112. Health is good, retention is 30 days, RF is 3, and the external certificate
+is Let's Encrypt `prod.internal.legohunter.io` plus its wildcard.
+
 After step 4, check the operator's chosen values:
 - `kubectl get sts -n redpanda-prod redpanda-prod -o jsonpath='{.spec.template.spec.affinity}'`
   should show the node affinity (05/06/10) and the operator's default one-broker-per-node
