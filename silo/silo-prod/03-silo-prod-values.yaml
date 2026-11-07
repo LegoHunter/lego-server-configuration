@@ -1,0 +1,163 @@
+# Helm values for silo-prod: the dedicated PROD S3 store (HOMELAB-48).
+#
+# Chart: helm/silo from github.com/pgsty/silo at tag RELEASE.2026-10-26T00-00-00Z (chart 7.0.3).
+# Silo is a maintained fork of MinIO. MinIO's open-source server and operator are archived. The
+# MINIO_* variable names below are Silo's compatibility interface and cannot be renamed.
+#
+#   Layout     distributed: 4 servers x 4 drives x 75Gi = 1.2 TiB raw, about 900 GiB usable
+#              (EC:4 over 16 drives)
+#   Placement  rasppi5-07, -08, -09, -10, one server per node (05 and 06 are kept for
+#              redpanda-prod)
+#   Growth     add a second pool at about 70% full; MinIO/Silo do not grow by enlarging drives
+#   Events     lego-uploads-prod puts and lego-photos-prod deletes -> redpanda-prod topic
+#              prod-s3-events, as prodproducer (SASL SCRAM-SHA-512)
+#   Access     api.silo.prod.internal.legohunter.io and console.silo.prod.internal.legohunter.io
+#              through Traefik (04-silo-prod-tls-and-routes.yaml); the chart's own Ingresses are off
+
+image:
+  repository: pgsty/silo
+  tag: RELEASE.2026-10-26T00-00-00Z
+  pullPolicy: IfNotPresent
+
+mcImage:
+  repository: pgsty/mc
+  tag: RELEASE.2026-10-26T00-00-00Z
+  pullPolicy: IfNotPresent
+
+mode: distributed
+replicas: 4
+drivesPerNode: 4
+pools: 1
+
+# Root credentials (keys rootUser/rootPassword) and secret-valued env (config.env) come from
+# ExternalSecrets.
+existingSecret: silo-prod-root
+extraSecret: silo-prod-env
+
+persistence:
+  enabled: true
+  storageClass: topolvm-provisioner
+  accessMode: ReadWriteOnce
+  size: 75Gi
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1Gi
+  limits:
+    memory: 2Gi
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - rasppi5-07
+                - rasppi5-08
+                - rasppi5-09
+                - rasppi5-10
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: silo
+            release: silo-prod
+        topologyKey: kubernetes.io/hostname
+
+service:
+  type: ClusterIP
+  port: "9000"
+
+consoleService:
+  type: ClusterIP
+  port: "9001"
+
+ingress:
+  enabled: false
+
+consoleIngress:
+  enabled: false
+
+# Bucket notifications to redpanda-prod. The password is MINIO_NOTIFY_KAFKA_SASL_PASSWORD_PRIMARY in
+# extraSecret. The queue directory keeps events that cannot be delivered while Kafka is down. It is
+# an emptyDir, so it survives container restarts but not the pod being rescheduled.
+environment:
+  MINIO_NOTIFY_KAFKA_ENABLE_PRIMARY: "on"
+  MINIO_NOTIFY_KAFKA_BROKERS_PRIMARY: "redpanda-prod-0.redpanda-prod.redpanda-prod.svc.cluster.local:9092,redpanda-prod-1.redpanda-prod.redpanda-prod.svc.cluster.local:9092,redpanda-prod-2.redpanda-prod.redpanda-prod.svc.cluster.local:9092"
+  MINIO_NOTIFY_KAFKA_TOPIC_PRIMARY: "prod-s3-events"
+  MINIO_NOTIFY_KAFKA_SASL_PRIMARY: "on"
+  MINIO_NOTIFY_KAFKA_SASL_USERNAME_PRIMARY: "prodproducer"
+  MINIO_NOTIFY_KAFKA_SASL_MECHANISM_PRIMARY: "sha512"
+  MINIO_NOTIFY_KAFKA_QUEUE_DIR_PRIMARY: "/silo-notify-queue"
+  MINIO_BROWSER_REDIRECT_URL: "https://console.silo.prod.internal.legohunter.io"
+
+extraVolumes:
+  - name: notify-queue
+    emptyDir: {}
+extraVolumeMounts:
+  - name: notify-queue
+    mountPath: /silo-notify-queue
+
+# Buckets (the same layout as SANDBOX's lego-uploads-sandbox and lego-photos-sandbox)
+#   lego-uploads-prod  everything that comes in: photos/ (plus photos/duplicate/ and photos/rejected/,
+#                      which ingress moves files into), bricklink/catalog|category/,
+#                      rebrickable/catalog|category/
+#   lego-photos-prod   the final scaled photos ingress writes (<dir>/<dir>/<md5>.jpg)
+#                      (lego.s3.buckets.final-photo = lego-photos-prod)
+buckets:
+  - name: lego-photos-prod
+    policy: none
+    purge: false
+    versioning: false
+  - name: lego-uploads-prod
+    policy: none
+    purge: false
+    versioning: false
+
+# Least-privilege policy for lego-data-ingress: objects in the two PROD buckets, nothing else.
+policies:
+  - name: lcms-ingress-prod
+    statements:
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::lego-photos-prod/*"
+          - "arn:aws:s3:::lego-uploads-prod/*"
+        actions:
+          - "s3:GetObject"
+          - "s3:PutObject"
+          - "s3:DeleteObject"
+          - "s3:AbortMultipartUpload"
+          - "s3:ListMultipartUploadParts"
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::lego-photos-prod"
+          - "arn:aws:s3:::lego-uploads-prod"
+        actions:
+          - "s3:GetBucketLocation"
+          - "s3:ListBucket"
+          - "s3:ListBucketMultipartUploads"
+
+users:
+  - accessKey: lcms-ingress
+    existingSecret: silo-prod-ingress-user
+    existingSecretKey: secretKey
+    policy: lcms-ingress-prod
+
+# Bucket event rules, which the chart has no setting for. --ignore-existing makes re-runs safe.
+# Uploads bucket: puts. Every new file is routed by key prefix (photos/, bricklink/, rebrickable/).
+# Photos bucket: deletes only, which feed the final-photo deletion pipeline. ingress writes the puts itself, and
+# they would only be logged as not routable.
+customCommands:
+  - command: "event add mysilo/lego-uploads-prod arn:minio:sqs::PRIMARY:kafka --event put --ignore-existing"
+  - command: "event add mysilo/lego-photos-prod arn:minio:sqs::PRIMARY:kafka --event delete --ignore-existing"
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+metrics:
+  serviceMonitor:
+    enabled: false

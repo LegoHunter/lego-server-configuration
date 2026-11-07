@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: silo-prod
+  labels:
+    environment: prod
+    app: silo

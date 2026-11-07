@@ -1,0 +1,58 @@
+# Let's Encrypt certificate and Traefik routes for silo-prod.
+#   https://console.silo.prod.internal.legohunter.io -> silo-prod-console:9001
+#   https://api.silo.prod.internal.legohunter.io     -> silo-prod:9000 (S3 API from outside the cluster)
+# In-cluster clients (lego-data-ingress PROD) use http://silo-prod.silo-prod.svc.cluster.local:9000.
+#
+# Every IngressRoute needs the annotation kubernetes.io/ingress.class: traefik. Traefik runs with
+# --providers.kubernetescrd.ingressClass=traefik and silently ignores routes without it.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: silo-prod-tls
+  namespace: silo-prod
+spec:
+  secretName: silo-prod-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  commonName: "*.silo.prod.internal.legohunter.io"
+  dnsNames:
+    - "*.silo.prod.internal.legohunter.io"
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: silo-prod-console
+  namespace: silo-prod
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`console.silo.prod.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - name: silo-prod-console
+          port: 9001
+  tls:
+    secretName: silo-prod-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: silo-prod-api
+  namespace: silo-prod
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`api.silo.prod.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - name: silo-prod
+          port: 9000
+  tls:
+    secretName: silo-prod-tls

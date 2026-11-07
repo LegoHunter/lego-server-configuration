@@ -11,7 +11,8 @@
 # command lines, shell history or this script's output.
 #
 # Topics mirror lego-data-ingress's SANDBOX profile (application-sandbox.yml), with the
-# sandbox- prefix replaced by prod-. Consumer groups are <topic>-group.
+# sandbox- prefix replaced by prod-. Consumer groups are <topic>-group. The bucket-event topic is
+# prod-s3-events (SANDBOX still calls it sandbox-minio-s3-events until HOMELAB-53/54).
 set -euo pipefail
 
 NS=redpanda-prod
@@ -23,7 +24,7 @@ REPLICAS=3
 # topic:partitions. upload-photo has 12 partitions, as in SANDBOX, so the four photo consumers
 # can work in parallel.
 TOPICS=(
-  prod-minio-s3-events:3
+  prod-s3-events:3
   prod-upload-photo:12
   prod-delete-photo:3
   prod-upload-bricklink-catalog:3
@@ -83,9 +84,9 @@ done
 
 echo "== acls"
 # Prefixed ACLs cover every prod- topic and prod-...-group consumer group, including topics added later.
-# lego-data-ingress produces (MinIO events are routed onto the upload and entry topics) as
-# prodproducer, and consumes as prodconsumer. MinIO's bucket notifications also produce, as
-# prodproducer.
+# lego-data-ingress produces (S3 events are routed onto the upload and entry topics) as
+# prodproducer, and consumes as prodconsumer. silo-prod's bucket notifications also produce, as
+# prodproducer, onto prod-s3-events.
 rpk_admin security acl create --allow-principal User:prodproducer \
   --operation write,describe --topic prod- --resource-pattern-type prefixed >/dev/null
 rpk_admin security acl create --allow-principal User:prodconsumer \
