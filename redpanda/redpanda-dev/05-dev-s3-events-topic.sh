@@ -9,9 +9,10 @@
 # Run it where kubectl can read Secrets in redpanda-dev and exec into its pods (an admin context):
 #   KUBE_CONTEXT=lcms-admin ./05-dev-s3-events-topic.sh
 #
-# The admin password comes from the Secret redpanda-dev/redpanda-users (ExternalSecret, Infisical
-# Development). It goes to rpk inside the broker pod on stdin, so it never appears in command
-# lines, shell history or this script's output.
+# The admin password comes from the hand-made Secret redpanda-dev/redpanda-dev-superusers
+# (superusers.txt, one line "admin:<password>:<mechanism>"). redpanda-users.admin_password in
+# Infisical is stale and Kafka rejects it (README.md, HOMELAB-50). The password goes to rpk inside
+# the broker pod on stdin, so it never appears in command lines, shell history or this output.
 set -euo pipefail
 
 NS=redpanda-dev
@@ -21,12 +22,13 @@ TOPIC=dev-s3-events
 PARTITIONS=3                     # the same as sandbox-s3-events
 REPLICAS=3
 
-secret() {  # secret <key>: prints one decoded value from redpanda-users (used only in pipes)
-  kubectl $CTX get secret redpanda-users -n "$NS" -o "jsonpath={.data.$1}" | base64 -d
+admin_password() {  # prints the admin password (used only in pipes)
+  kubectl $CTX get secret redpanda-dev-superusers -n "$NS" -o "jsonpath={.data.superusers\.txt}" |
+    base64 -d | awk -F: '$1 == "admin" {print $2; exit}'
 }
 
 rpk_admin() {  # rpk_admin <rpk args...>: rpk in the broker pod as the SASL superuser "admin"
-  secret admin_password | kubectl $CTX exec -i -n "$NS" "$POD" -c redpanda -- bash -c '
+  admin_password | kubectl $CTX exec -i -n "$NS" "$POD" -c redpanda -- bash -c '
     IFS= read -r RPK_PASS; export RPK_PASS
     exec rpk "$@" -X user=admin -X sasl.mechanism=SCRAM-SHA-512' rpk "$@"
 }

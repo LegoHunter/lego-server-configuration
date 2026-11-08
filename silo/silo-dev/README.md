@@ -26,7 +26,9 @@ operator are archived upstream. It follows the silo-prod pattern (`../silo-prod/
 
 1. **Infisical**, project `legohunter.io`:
    - **Development**, path `/`:
-     - `silo-dev-root`: `{"root_user": "<not minio/admin>", "root_password": "<long random>"}`
+     - `silo-dev-root`: `{"root_user": "<not minio/admin>", "root_password": "<long random>"}`.
+       **No spaces in either value.** The chart's setup job expands them unquoted, so a space
+       makes every `mc alias set` fail (it happened on 2026-11-08).
      - `silo-dev-ingress-dev`: `{"access_key": "lcms-ingress-dev", "secret_key": "<long random>"}`
      - `redpanda-dev-users` already exists; Silo uses its `devproducer_password`.
    - **Sandbox**, path `/`:
@@ -49,6 +51,20 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
 | 6 | **Cutover.** (a) Delete the copy Job and apply it again: a final incremental pass. (b) The owner changes the S3 access/secret in Infisical Sandbox `s3-configuration.yml` to `lcms-ingress-sandbox`. (c) Push the lego-data-ingress HOMELAB-54 branch: `lego.s3.url` = `http://silo-dev.silo-dev.svc.cluster.local:9000`, deployed to SANDBOX | ingress starts and its readiness check is UP |
 | 7 | Event rules: `helm upgrade silo-dev silo/helm/silo -n silo-dev -f 03-silo-dev-values.yaml` (now **with** customCommands) | `mc event ls` shows put on both uploads buckets and delete on both photos buckets |
 | 8 | End to end in SANDBOX: upload a test photo through the normal path, then delete a `poc/` object | The upload is routed and scaled into `lego-photos-sandbox`. `sandbox-s3-events` gets the events, with principal `lcms-ingress-sandbox` |
+
+## Commissioning record
+
+2026-11-08:
+- **Steps 0–5 done.** Steps 6–8 (cutover) and R1–R3 (retirement) are still to come.
+- **Store:** 4 servers on rasppi5-08/10/05/06; 16/16 drives online, EC:4, 120 GiB usable.
+- **Access:** the Let's Encrypt certificate is valid until 2027-02-06; the API health check and the console return 200.
+- **Topic:** `dev-s3-events` was created with its ACLs.
+- **Users:** `lcms-ingress-sandbox` can reach its own bucket and is refused on DEV buckets and bucket creation.
+- **First install:** it was redone after the root user was corrected; the Secret had a space.
+- **Bulk copy:** exact.
+  - `lego-uploads-sandbox`: 2.7 GiB, 358 objects.
+  - `lego-photos-sandbox`: 2.9 GiB, 2,349 objects.
+  - minio-dev had no DEV buckets.
 
 Between steps 6(a) and 7, nothing new may be written to minio-dev. lego-data-ingress is its only
 client, and it switches in 6(c).
