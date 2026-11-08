@@ -1,3 +1,6 @@
+# HISTORICAL: minio-dev was retired on 2026-11-08 (HOMELAB-54), so this Job can no longer run. It is
+# kept as the record of how the data was copied (README.md, commissioning record).
+#
 # One-off copy of minio-dev's buckets into silo-dev (HOMELAB-54). Lives in namespace minio-dev and
 # disappears with it.
 #

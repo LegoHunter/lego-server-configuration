@@ -5,7 +5,7 @@ fork of MinIO. MinIO's open-source server and operator were archived upstream in
 concept on 2026-11-07 showed that Silo's bucket events reach redpanda-prod over SCRAM-SHA-512 in
 exactly the S3 event format lego-data-ingress parses.
 
-SANDBOX and DEV still use `minio-dev`, until `silo-dev` replaces it (HOMELAB-54).
+SANDBOX and DEV use `../silo-dev/` (HOMELAB-54), which replaced minio-dev.
 
 | | |
 |---|---|
