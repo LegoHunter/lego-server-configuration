@@ -102,15 +102,20 @@ Copy the `RoleBinding` at the bottom of [rbac/arc-deployer.yaml](rbac/arc-deploy
 
 ### Update the runner image
 
-1. Bump `FROM ghcr.io/actions/actions-runner:<version>` (and `KUBECTL_VERSION`, kept within one
-   minor version of the cluster) in [Dockerfile](Dockerfile).
-2. Build and push (arm64):
-   ```bash
-   sudo docker build --no-cache -t quay.io/tvattima/arc-runner-arm64:k8s-v<N> github-runner/
-   sudo docker push quay.io/tvattima/arc-runner-arm64:k8s-v<N>
-   ```
-3. Set `image:` in [helm/arc-runner-values.yaml](helm/arc-runner-values.yaml), commit, and run the
-   step-4 `helm upgrade` command.
+GitHub deprecates old runner versions every few months. Deploy jobs then stay **queued**, and
+`kubectl get ephemeralrunner -n arc-runners` shows runners in state `Outdated` ("Runner is
+deprecated"), recreated every minute or two.
+
+1. In [Dockerfile](Dockerfile), bump `FROM ghcr.io/actions/actions-runner:<version>` to the latest
+   [release](https://github.com/actions/runner/releases). Keep the kubectl image within one minor
+   version of the cluster.
+2. In [helm/arc-runner-values.yaml](helm/arc-runner-values.yaml), bump `image:` to
+   `quay.io/tvattima/arc-runner-arm64:k8s-v<N+1>`.
+3. Commit and push (any `feature/**` branch or `develop`). The workflow
+   [arc-runner-image.yml](../.github/workflows/arc-runner-image.yml) builds the arm64 image on a
+   GitHub-hosted runner and pushes it to Quay with the org's `QUAY_USERNAME`/`QUAY_TOKEN`. It never
+   overwrites an existing tag. The Dockerfile has no `RUN` step, so no emulation is needed.
+4. Run the step-4 `helm upgrade` command. Queued deploy jobs then start on the new runners.
 
 ### Rotate the GitHub App private key
 
