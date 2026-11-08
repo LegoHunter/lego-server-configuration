@@ -1,0 +1,122 @@
+# One-off copy of minio-dev's buckets into silo-dev (HOMELAB-54). Lives in namespace minio-dev and
+# disappears with it.
+#
+#   Source       minio-dev, as its root user: the tenant's own config.env (Secret
+#                myminio-env-configuration), sourced inside the pod, never printed.
+#   Destination  silo-dev, as the per-environment ingress users, which can only write their own
+#                environment's buckets: lcms-ingress-sandbox (and lcms-ingress-dev if minio-dev has
+#                DEV buckets). Their keys come from Infisical through the two ExternalSecrets below.
+#   Copy         mc mirror --preserve; existing identical objects are skipped, so a second run only
+#                copies what changed since (the final pass right before cutover).
+#   Check        size and object count per bucket (mc du), source and destination, side by side.
+#
+# IMPORTANT: run this only while silo-dev has NO bucket event rules (step 4 of README.md installs
+# it without them). Otherwise every copied upload is published to sandbox-s3-events and ingress
+# reprocesses the whole history as new photos and catalog files.
+#
+# Run (admin context): kubectl apply -f 05-…; kubectl wait --for=condition=complete job/silo-dev-copy
+# -n minio-dev --timeout=30m; kubectl logs job/silo-dev-copy -n minio-dev. To run it again:
+# kubectl delete job silo-dev-copy -n minio-dev, then apply again.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: silo-dev-copy-sandbox-user
+  namespace: minio-dev
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: infisical-sandbox-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: silo-dev-copy-sandbox-user
+    creationPolicy: Owner
+    deletionPolicy: Delete
+  data:
+    - secretKey: secretKey
+      remoteRef:
+        key: silo-dev-ingress-sandbox
+        property: secret_key
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: silo-dev-copy-dev-user
+  namespace: minio-dev
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: infisical-dev-cluster-secret-store
+    kind: ClusterSecretStore
+  target:
+    name: silo-dev-copy-dev-user
+    creationPolicy: Owner
+    deletionPolicy: Delete
+  data:
+    - secretKey: secretKey
+      remoteRef:
+        key: silo-dev-ingress-dev
+        property: secret_key
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: silo-dev-copy
+  namespace: minio-dev
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: copy
+          image: pgsty/mc:RELEASE.2026-10-26T00-00-00Z
+          env:
+            - name: SANDBOX_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: silo-dev-copy-sandbox-user
+                  key: secretKey
+            - name: DEV_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: silo-dev-copy-dev-user
+                  key: secretKey
+            - name: HOME
+              value: /tmp
+          volumeMounts:
+            - name: minio-dev-env
+              mountPath: /minio-dev-env
+              readOnly: true
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              # Source credentials from the tenant's config.env (export MINIO_ROOT_USER=..., ...).
+              . /minio-dev-env/config.env
+              mc alias set src http://minio.minio-dev.svc.cluster.local "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+              mc alias set sandbox http://silo-dev.silo-dev.svc.cluster.local:9000 lcms-ingress-sandbox "$SANDBOX_SECRET" >/dev/null
+              mc alias set dev http://silo-dev.silo-dev.svc.cluster.local:9000 lcms-ingress-dev "$DEV_SECRET" >/dev/null
+              unset MINIO_ROOT_PASSWORD SANDBOX_SECRET DEV_SECRET
+              echo "== minio-dev buckets"
+              mc ls src
+              copy() {  # copy <bucket> <destination alias>
+                if mc ls "src/$1" >/dev/null 2>&1; then
+                  echo "== mirror $1 -> $2"
+                  mc mirror --preserve --quiet "src/$1" "$2/$1"
+                  # mc du prints size and object count; the image has no grep, sed or tail.
+                  echo "-- source:      $(mc du "src/$1")"
+                  echo "-- destination: $(mc du "$2/$1")"
+                else
+                  echo "== $1: not on minio-dev, skipped"
+                fi
+              }
+              copy lego-uploads-sandbox sandbox
+              copy lego-photos-sandbox sandbox
+              copy lego-uploads-dev dev
+              copy lego-photos-dev dev
+              echo "== done"
+      volumes:
+        - name: minio-dev-env
+          secret:
+            secretName: myminio-env-configuration

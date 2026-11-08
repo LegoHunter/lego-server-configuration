@@ -1,0 +1,202 @@
+# Helm values for silo-dev: the S3 store for SANDBOX and DEV (HOMELAB-54), replacing minio-dev.
+#
+# Chart: helm/silo from github.com/pgsty/silo at tag RELEASE.2026-10-26T00-00-00Z (chart 7.0.3),
+# the same as silo-prod. The MINIO_* variable names below are Silo's compatibility interface and
+# cannot be renamed.
+#
+#   Layout     distributed: 4 servers x 4 drives x 10Gi = 160 GiB raw, about 120 GiB usable
+#              (EC:4 over 16 drives). minio-dev held 5.6 GiB when this was sized (2026-11-08).
+#   Placement  rasppi5-05, -06, -08, -10, one server per node: the workers with the most free
+#              topolvm space (07 and 09 also host redpanda-dev)
+#   Growth     add a second pool at about 70% full; Silo does not grow by enlarging drives
+#   Events     two Kafka targets on redpanda-dev, both as devproducer (SASL SCRAM-SHA-512, the
+#              plaintext in-cluster listener 9092, no TLS):
+#                SANDBOX -> sandbox-s3-events   (lego-uploads-sandbox puts, lego-photos-sandbox deletes)
+#                DEV     -> dev-s3-events       (lego-uploads-dev puts, lego-photos-dev deletes)
+#   Users      lcms-ingress-sandbox / lcms-ingress-dev, each limited to its environment's buckets
+#   Access     api.silo.dev.internal.legohunter.io and console.silo.dev.internal.legohunter.io
+#              through Traefik (04-silo-dev-tls-and-routes.yaml); the chart's own Ingresses are off
+
+image:
+  repository: pgsty/silo
+  tag: RELEASE.2026-10-26T00-00-00Z
+  pullPolicy: IfNotPresent
+
+mcImage:
+  repository: pgsty/mc
+  tag: RELEASE.2026-10-26T00-00-00Z
+  pullPolicy: IfNotPresent
+
+mode: distributed
+replicas: 4
+drivesPerNode: 4
+pools: 1
+
+existingSecret: silo-dev-root
+extraSecret: silo-dev-env
+
+persistence:
+  enabled: true
+  storageClass: topolvm-provisioner
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - rasppi5-05
+                - rasppi5-06
+                - rasppi5-08
+                - rasppi5-10
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: silo
+            release: silo-dev
+        topologyKey: kubernetes.io/hostname
+
+service:
+  type: ClusterIP
+  port: "9000"
+
+consoleService:
+  type: ClusterIP
+  port: "9001"
+
+ingress:
+  enabled: false
+
+consoleIngress:
+  enabled: false
+
+# Bucket notifications to redpanda-dev, one target per environment. Passwords are in extraSecret.
+# The queue directory keeps events that cannot be delivered while Kafka is down (an emptyDir:
+# survives container restarts, not rescheduling).
+environment:
+  MINIO_NOTIFY_KAFKA_ENABLE_SANDBOX: "on"
+  MINIO_NOTIFY_KAFKA_BROKERS_SANDBOX: "redpanda-dev-0.redpanda-dev.redpanda-dev.svc.cluster.local:9092,redpanda-dev-1.redpanda-dev.redpanda-dev.svc.cluster.local:9092,redpanda-dev-2.redpanda-dev.redpanda-dev.svc.cluster.local:9092"
+  MINIO_NOTIFY_KAFKA_TOPIC_SANDBOX: "sandbox-s3-events"
+  MINIO_NOTIFY_KAFKA_SASL_SANDBOX: "on"
+  MINIO_NOTIFY_KAFKA_SASL_USERNAME_SANDBOX: "devproducer"
+  MINIO_NOTIFY_KAFKA_SASL_MECHANISM_SANDBOX: "sha512"
+  MINIO_NOTIFY_KAFKA_QUEUE_DIR_SANDBOX: "/silo-notify-queue/sandbox"
+  MINIO_NOTIFY_KAFKA_ENABLE_DEV: "on"
+  MINIO_NOTIFY_KAFKA_BROKERS_DEV: "redpanda-dev-0.redpanda-dev.redpanda-dev.svc.cluster.local:9092,redpanda-dev-1.redpanda-dev.redpanda-dev.svc.cluster.local:9092,redpanda-dev-2.redpanda-dev.redpanda-dev.svc.cluster.local:9092"
+  MINIO_NOTIFY_KAFKA_TOPIC_DEV: "dev-s3-events"
+  MINIO_NOTIFY_KAFKA_SASL_DEV: "on"
+  MINIO_NOTIFY_KAFKA_SASL_USERNAME_DEV: "devproducer"
+  MINIO_NOTIFY_KAFKA_SASL_MECHANISM_DEV: "sha512"
+  MINIO_NOTIFY_KAFKA_QUEUE_DIR_DEV: "/silo-notify-queue/dev"
+  MINIO_BROWSER_REDIRECT_URL: "https://console.silo.dev.internal.legohunter.io"
+
+extraVolumes:
+  - name: notify-queue
+    emptyDir: {}
+extraVolumeMounts:
+  - name: notify-queue
+    mountPath: /silo-notify-queue
+
+# Buckets: the same layout per environment as silo-prod.
+#   lego-uploads-<env>  everything that comes in: photos/ (plus photos/duplicate/, photos/rejected/),
+#                       bricklink/catalog|category/, rebrickable/catalog|category/
+#   lego-photos-<env>   the final scaled photos ingress writes (lego.s3.buckets.final-photo)
+buckets:
+  - name: lego-uploads-sandbox
+    policy: none
+    purge: false
+    versioning: false
+  - name: lego-photos-sandbox
+    policy: none
+    purge: false
+    versioning: false
+  - name: lego-uploads-dev
+    policy: none
+    purge: false
+    versioning: false
+  - name: lego-photos-dev
+    policy: none
+    purge: false
+    versioning: false
+
+# Least-privilege policies: each environment's ingress user reaches only its own two buckets.
+policies:
+  - name: lcms-ingress-sandbox
+    statements:
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::lego-photos-sandbox/*"
+          - "arn:aws:s3:::lego-uploads-sandbox/*"
+        actions:
+          - "s3:GetObject"
+          - "s3:PutObject"
+          - "s3:DeleteObject"
+          - "s3:AbortMultipartUpload"
+          - "s3:ListMultipartUploadParts"
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::lego-photos-sandbox"
+          - "arn:aws:s3:::lego-uploads-sandbox"
+        actions:
+          - "s3:GetBucketLocation"
+          - "s3:ListBucket"
+          - "s3:ListBucketMultipartUploads"
+  - name: lcms-ingress-dev
+    statements:
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::lego-photos-dev/*"
+          - "arn:aws:s3:::lego-uploads-dev/*"
+        actions:
+          - "s3:GetObject"
+          - "s3:PutObject"
+          - "s3:DeleteObject"
+          - "s3:AbortMultipartUpload"
+          - "s3:ListMultipartUploadParts"
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::lego-photos-dev"
+          - "arn:aws:s3:::lego-uploads-dev"
+        actions:
+          - "s3:GetBucketLocation"
+          - "s3:ListBucket"
+          - "s3:ListBucketMultipartUploads"
+
+users:
+  - accessKey: lcms-ingress-sandbox
+    existingSecret: silo-dev-ingress-sandbox-user
+    existingSecretKey: secretKey
+    policy: lcms-ingress-sandbox
+  - accessKey: lcms-ingress-dev
+    existingSecret: silo-dev-ingress-dev-user
+    existingSecretKey: secretKey
+    policy: lcms-ingress-dev
+
+# Bucket event rules (the chart has no setting for them). --ignore-existing makes re-runs safe.
+# Uploads buckets: puts (every new file is routed by key prefix). Photos buckets: deletes only,
+# which feed the final-photo deletion pipeline.
+customCommands:
+  - command: "event add mysilo/lego-uploads-sandbox arn:minio:sqs::SANDBOX:kafka --event put --ignore-existing"
+  - command: "event add mysilo/lego-photos-sandbox arn:minio:sqs::SANDBOX:kafka --event delete --ignore-existing"
+  - command: "event add mysilo/lego-uploads-dev arn:minio:sqs::DEV:kafka --event put --ignore-existing"
+  - command: "event add mysilo/lego-photos-dev arn:minio:sqs::DEV:kafka --event delete --ignore-existing"
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+metrics:
+  serviceMonitor:
+    enabled: false
