@@ -1,6 +1,7 @@
 # Builds the ARC runner image (github-runner/Dockerfile) for arm64 and pushes it to Quay.
 #
-# The tag comes from the image: line in github-runner/helm/arc-runner-values.yaml, so the values file
+# The tag comes from the image: line in github-runner/helm/arc-runner-values.yaml (arc-runner-prod-values.yaml
+# must name the same tag), so the values file
 # names the image that will exist. An existing tag is never overwritten: bump the tag (k8s-v<N+1>)
 # with every change. Deploying the new image is still a manual helm upgrade (github-runner/README.md).
 name: ARC runner image
@@ -12,7 +13,9 @@ on:
       - develop
     paths:
       - github-runner/Dockerfile
+      - github-runner/hooks/**
       - github-runner/helm/arc-runner-values.yaml
+      - github-runner/helm/arc-runner-prod-values.yaml
       - .github/workflows/arc-runner-image.yml
   workflow_dispatch:
 
@@ -37,6 +40,12 @@ jobs:
           image=$(grep -E '^\s*image:\s*quay\.io/tvattima/arc-runner-arm64:' github-runner/helm/arc-runner-values.yaml | head -1 | awk '{print $2}')
           if [ -z "$image" ]; then
             echo "::error::No quay.io/tvattima/arc-runner-arm64 image line in github-runner/helm/arc-runner-values.yaml"
+            exit 1
+          fi
+          # arc-runner-prod (HOMELAB-29) runs the same image; both values files must name the same tag.
+          prod_image=$(grep -E '^\s*image:\s*quay\.io/tvattima/arc-runner-arm64:' github-runner/helm/arc-runner-prod-values.yaml | head -1 | awk '{print $2}')
+          if [ "$prod_image" != "$image" ]; then
+            echo "::error::github-runner/helm/arc-runner-prod-values.yaml names '$prod_image', but arc-runner-values.yaml names '$image'. Bump both to the same tag."
             exit 1
           fi
           echo "tag=${image##*:}" >> "$GITHUB_OUTPUT"

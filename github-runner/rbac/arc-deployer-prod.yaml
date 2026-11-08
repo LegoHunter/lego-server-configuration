@@ -1,0 +1,37 @@
+# Cluster identity for the dedicated PROD runner `arc-runner-prod` (HOMELAB-29,
+# see ../helm/arc-runner-prod-values.yaml).
+#
+# Same permissions as the shared runner (ClusterRole arc-deployer in ./arc-deployer.yaml: apply
+# Deployments, Services, IngressRoutes and Middlewares; no delete, no Secrets), but a separate
+# ServiceAccount that is bound ONLY in services-prod. The shared arc-deployer must never get a
+# RoleBinding in services-prod: every job on arc-runner, from any branch, would then be able to
+# deploy to PROD.
+#
+# Apply after ./arc-deployer.yaml (it defines the ClusterRole), with an admin context:
+#   kubectl apply -f github-runner/rbac/arc-deployer-prod.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: arc-deployer-prod
+  namespace: arc-runners
+  labels:
+    app.kubernetes.io/name: arc-deployer-prod
+    app.kubernetes.io/part-of: github-arc
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: arc-deployer-prod
+  namespace: services-prod
+  labels:
+    app.kubernetes.io/name: arc-deployer-prod
+    app.kubernetes.io/part-of: github-arc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: arc-deployer
+subjects:
+  - kind: ServiceAccount
+    name: arc-deployer-prod
+    namespace: arc-runners

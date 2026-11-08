@@ -82,10 +82,14 @@ May have to change `@SpringBootApplication` to:
 31. Add the Kubernetes manifests and the CI caller described in [Service standard](#service-standard-homelab-26).
 32. Push the feature branch. The push builds, tests and deploys the branch to `services-sandbox`;
     check the run, then `https://<service>.sandbox.internal.legohunter.io/actuator/health`.
-33. Allow the deploy runner into each namespace the service deploys to: the `arc-deployer`
-    RoleBinding in [../github-runner/rbac/arc-deployer.yaml](../github-runner/rbac/arc-deployer.yaml)
-    (today only `services-sandbox` exists). Each namespace also needs its `default-headers` Middleware
-    (`kubernetes/configuration-files/default-headers-<env>.yaml`, applied once per namespace).
+33. The deploy runners already have rights in every `services-<env>` namespace: the shared
+    `arc-deployer` in `services-sandbox` and `services-dev`
+    ([../github-runner/rbac/arc-deployer.yaml](../github-runner/rbac/arc-deployer.yaml)) and the PROD-only
+    `arc-deployer-prod` in `services-prod` ([../github-runner/rbac/arc-deployer-prod.yaml](../github-runner/rbac/arc-deployer-prod.yaml)).
+    Never bind `arc-deployer` in `services-prod`. Each namespace also needs its `default-headers`
+    Middleware (`kubernetes/configuration-files/default-headers-<env>.yaml`, applied once per namespace).
+34. Set up the GitHub Environments and the PROD runner allowlist **before the first release**, as in
+    [Release controls](#release-controls-homelab-29).
 
 ## Service standard (HOMELAB-26)
 
@@ -100,7 +104,7 @@ reference implementations.
 | push to `feature/**` | tests, image `quay.io/tvattima/<service>:<pushed sha>` (expires after 26 weeks), deploy | `services-sandbox` (the live preview of the feature branch being worked on; the latest push wins) |
 | PR `feature/*` -> `develop` | tests only, on the branch merged with the latest `develop` | - |
 | PR merged into `develop` | tests on the merge commit, then the **only** image build for that commit: `quay.io/tvattima/<service>:dev-<merge sha>` (no expiry), deployed by digest - only if `DEPLOY_DEV_ENABLED` is `true` | `services-dev` |
-| PR `develop` -> `main` merged | **no rebuild** (build once, promote by digest): checks `main` has exactly the code of the merged `develop` commit, adds the tag `prod-<main sha>` to that commit's DEV image and deploys the same digest - only if `DEPLOY_PROD_ENABLED` is `true`. Fails if DEV never built that commit. | `services-prod` |
+| PR `develop` -> `main` merged (the push of its merge commit to `main`) | **waits for the owner's approval** (the `prod` Environment), then **no rebuild** (build once, promote by digest): checks `main` has exactly the code of the merged `develop` commit, adds the tag `prod-<main sha>` to that commit's DEV image and deploys the same digest from the PROD runner - only if `DEPLOY_PROD_ENABLED` is `true`. Fails if DEV never built that commit. | `services-prod` |
 
 Every deploy ends with a **smoke check** (E10): `https://<host from the IngressRoute>/actuator/health/readiness`
 must return 200 with `"status":"UP"` within 2 minutes, which checks DNS, Traefik, TLS and the
@@ -110,7 +114,9 @@ Actions). So every service must expose `/actuator/health/readiness` through its 
 
 Every deploy pins the image by digest (`quay.io/tvattima/<service>@sha256:...`), so PROD runs
 byte-for-byte the image DEV ran. Consequences: release to PROD only by merging `develop` into `main`
-(never commit to `main` directly), and keep the DEV gate open whenever the PROD gate is open.
+with a **merge commit** (never squash or rebase, never commit to `main` directly: PROD refuses any
+`main` commit that is not a merge whose second parent is on `develop`), and keep the DEV gate open
+whenever the PROD gate is open.
 
 A feature push or PR that changes only documentation (`*.md`, `docs/**`, `LICENSE`) skips the
 build, tests, image and deploy; merges into `develop`/`main` are never skipped. Each environment
@@ -139,10 +145,11 @@ on:
   push:
     branches:
       - 'feature/**'
+      # PROD: the push of the develop -> main merge commit (HOMELAB-29).
+      - main
   pull_request:
     branches:
       - develop
-      - main
     types:
       - opened
       - reopened
@@ -170,9 +177,59 @@ The pipeline itself is [../.github/workflows/k8s-service-pipeline.yml](../.githu
 `QUAY_USERNAME` (variable) and `QUAY_TOKEN` (secret) are shared by the existing services and are
 not set per repository, so they are most likely LegoHunter organization settings.
 `DEPLOY_DEV_ENABLED` / `DEPLOY_PROD_ENABLED` are unset (gates shut) until the target namespace,
-its ExternalSecret, the `arc-deployer` RoleBinding, its `default-headers` Middleware
+its ExternalSecret, the deploy runner's RoleBinding, its `default-headers` Middleware
 ([../kubernetes/configuration-files/default-headers-<env>.yaml](../kubernetes/configuration-files/)) and
-the environment's database exist.
+the environment's database exist, and, for PROD, the [release controls](#release-controls-homelab-29)
+are in place. Keep them **repository** variables: the caller reads them in `with:`, where
+Environment variables are not available.
+
+### Release controls (HOMELAB-29)
+
+PROD has two independent controls, and a new service needs both before its PROD gate opens.
+
+**1. GitHub Environments: one approval per release.** In the repository's *Settings ->
+Environments*, create:
+
+| Environment | Protection |
+| --- | --- |
+| `sandbox` | none (deployment record only) |
+| `dev` | none (deployment record only) |
+| `prod` | **Required reviewers:** the owner (`tvattima`), with *Prevent self-review* **off** (there is a single maintainer). **Deployment branches and tags:** *Selected branches and tags*, one branch rule `main`. |
+
+Or with `gh` (repository admin):
+
+```bash
+repo=LegoHunter/<service>
+owner_id=$(gh api users/tvattima --jq .id)
+gh api -X PUT repos/$repo/environments/sandbox
+gh api -X PUT repos/$repo/environments/dev
+gh api -X PUT repos/$repo/environments/prod --input - <<EOF
+{"prevent_self_review": false,
+ "reviewers": [{"type": "User", "id": $owner_id}],
+ "deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
+EOF
+gh api -X POST repos/$repo/environments/prod/deployment-branch-policies -f name=main -f type=branch
+```
+
+Only the first PROD job, `prod-promote`, names `prod`, so a release pauses **once**, before anything
+is tagged `prod-*` or deployed. Approve it in the run (*Review deployments*) to tag and deploy;
+reject it and PROD and the image tags stay unchanged. `deploy-prod` deliberately names no
+Environment (GitHub would ask again). `prod-promote` refuses to run if `prod` has no required reviewer
+or no branch rule, because GitHub silently creates a missing Environment without protection. On the
+GitHub Free plan, required reviewers exist only for **public** repositories, so a private service
+repo cannot release to PROD.
+
+The `prod` branch rule is checked against the run's ref. That is why PROD runs on the **push** to
+`main` (`refs/heads/main`) and not on the merged pull request (`refs/pull/<n>/merge`).
+
+**2. The PROD runner: no PROD rights anywhere else.** A runner's cluster rights come from its pod
+ServiceAccount, not from a GitHub secret, so Environment approvals cannot protect them. Only
+`deploy-prod` runs on `[arc-runner-prod]`, the only runner bound in `services-prod`. That runner fails
+every job that is not a push to `main` from a repository in its allowlist. Add the new service to
+`PROD_RUNNER_ALLOWED_REPOS` in
+[../github-runner/helm/arc-runner-prod-values.yaml](../github-runner/helm/arc-runner-prod-values.yaml)
+and run its `helm upgrade` ([../github-runner/README.md](../github-runner/README.md)). The shared
+`[arc-runner]` (SANDBOX, DEV) has no rights in `services-prod`.
 
 To trial a pipeline change, point one service's feature branch at the pipeline's feature branch
 (`...k8s-service-pipeline.yml@feature/<branch>`), and switch back to `@develop` before merging.
