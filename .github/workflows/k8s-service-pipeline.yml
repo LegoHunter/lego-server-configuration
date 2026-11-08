@@ -14,13 +14,26 @@ name: Kubernetes service pipeline
 #   DEV      merge of feature/* into develop: runs the tests on the merge commit, builds the image
 #            ONCE, tags it dev-<merge commit SHA> and deploys it to services-dev. Only if
 #            deploy-dev-enabled.
-#   PROD     merge of develop into main: NO rebuild (HOMELAB-26 E1, build once, promote by digest).
-#            Checks that the main merge commit has exactly the tree of the develop commit that was
-#            merged, takes the DEV image built for that develop commit (dev-<develop SHA>), adds the
-#            tag prod-<main merge SHA> to the same digest and deploys that digest to services-prod.
-#            So PROD runs byte-for-byte the image DEV ran. Fails (does not rebuild) if there is no
-#            DEV image for that commit, e.g. the DEV gate was shut when it merged, or develop's head
-#            is not a feature/* merge. Only if deploy-prod-enabled.
+#   PROD     the push of a develop -> main merge commit to main: NO rebuild (HOMELAB-26 E1, build
+#            once, promote by digest). Pauses for the owner's approval first (HOMELAB-29, the `prod`
+#            GitHub Environment on prod-promote). Then checks that the main merge commit has exactly
+#            the tree of the develop commit that was merged (its second parent), takes the DEV image
+#            built for that develop commit (dev-<develop SHA>), adds the tag prod-<main merge SHA> to
+#            the same digest and deploys that digest to services-prod from the dedicated PROD runner
+#            [arc-runner-prod]. So PROD runs byte-for-byte the image DEV ran. Fails (does not
+#            rebuild) if there is no DEV image for that commit, e.g. the DEV gate was shut when it
+#            merged, or develop's head is not a feature/* merge. Only if deploy-prod-enabled.
+#            Triggered by the push, not by the merged pull_request event: the `prod` Environment only
+#            accepts refs/heads/main, and a pull_request run's ref is refs/pull/<n>/merge.
+#
+# GitHub Environments (HOMELAB-29): deploy-sandbox, deploy-dev and prod-promote name the `sandbox`,
+# `dev` and `prod` Environments, which gives every deploy a record in the repo's Deployments view.
+# Only `prod` is protected: a required reviewer (the owner) and deployments from `main` only.
+# GitHub asks for an approval on every job that names a protected Environment, so only the first
+# PROD job (prod-promote) names `prod`; nothing is tagged prod-* or deployed until it is approved,
+# and a rejection leaves PROD and the image tags unchanged. deploy-prod deliberately names no
+# Environment, or every release would need a second approval. prod-promote refuses to run if the
+# repo's `prod` Environment has no required reviewer (GitHub would otherwise create it unprotected).
 #
 # Docs-only changes (E9): a feature push or PR that only touches *.md, docs/** or LICENSE skips
 # the build, tests, image and deploy. Merges into develop/main are never skipped.
@@ -43,7 +56,10 @@ name: Kubernetes service pipeline
 #
 # Conventions the jobs rely on: the Maven build produces target/*.jar; kubernetes/Containerfile
 # builds the image; kubernetes/overlays/<env> renders a Deployment named <app>; the Quay
-# repository is quay.io/tvattima/<app>; deploys run on the ARC scale set [arc-runner].
+# repository is quay.io/tvattima/<app>; SANDBOX and DEV deploys run on the ARC scale set
+# [arc-runner] and PROD deploys on [arc-runner-prod] (the only runner with rights in services-prod;
+# it refuses any job that is not a push to main of an allowlisted service repo, see
+# ../../github-runner/README.md).
 #
 # Callers reference this file at @develop, so a change merged here reaches every service on its
 # next run. To trial a change, point one service's feature branch at this repo's feature branch.
@@ -221,6 +237,10 @@ jobs:
     concurrency:
       group: deploy-sandbox-${{ inputs.app }}
       cancel-in-progress: false
+    # HOMELAB-29: deployment record only; the `sandbox` Environment has no protection rules.
+    environment:
+      name: sandbox
+      url: ${{ steps.smoke.outputs.url }}
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
@@ -245,6 +265,7 @@ jobs:
           kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
           echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
       - name: Smoke check through the ingress
+        id: smoke
         # E10: the rollout only proves the pod is ready inside the cluster. This checks the service
         # end to end - DNS, Traefik IngressRoute, TLS certificate, default-headers Middleware - by
         # calling /actuator/health/readiness on the host the IngressRoute actually serves. A failure
@@ -261,6 +282,7 @@ jobs:
             exit 1
           fi
           url="https://$host/actuator/health/readiness"
+          echo "url=https://$host" >> "$GITHUB_OUTPUT"
           code=000
           for attempt in $(seq 1 12); do
             code=$(curl -sS -o readiness.json -w '%{http_code}' --max-time 10 "$url" 2>curl.err || true)
@@ -365,6 +387,10 @@ jobs:
     concurrency:
       group: deploy-dev-${{ inputs.app }}
       cancel-in-progress: false
+    # HOMELAB-29: deployment record only; the `dev` Environment has no protection rules.
+    environment:
+      name: dev
+      url: ${{ steps.smoke.outputs.url }}
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
@@ -391,6 +417,7 @@ jobs:
           kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
           echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
       - name: Smoke check through the ingress
+        id: smoke
         # E10: the rollout only proves the pod is ready inside the cluster. This checks the service
         # end to end - DNS, Traefik IngressRoute, TLS certificate, default-headers Middleware - by
         # calling /actuator/health/readiness on the host the IngressRoute actually serves. A failure
@@ -407,6 +434,7 @@ jobs:
             exit 1
           fi
           url="https://$host/actuator/health/readiness"
+          echo "url=https://$host" >> "$GITHUB_OUTPUT"
           code=000
           for attempt in $(seq 1 12); do
             code=$(curl -sS -o readiness.json -w '%{http_code}' --max-time 10 "$url" 2>curl.err || true)
@@ -425,7 +453,7 @@ jobs:
   prod-deploy-gate:
     name: PROD deploy gate
     # Runs only when the PROD gate is shut, to explain why the PROD jobs were skipped.
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && !inputs.deploy-prod-enabled
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !inputs.deploy-prod-enabled
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -438,7 +466,11 @@ jobs:
   prod-promote:
     name: PROD promote DEV image
     # Build once, promote by digest (HOMELAB-26 E1): no Maven build and no image build for PROD.
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && inputs.deploy-prod-enabled
+    # The release approval (HOMELAB-29): this is the only job that names the protected `prod`
+    # Environment, so the run pauses here until the owner approves, before anything is tagged or
+    # deployed. Rejecting it skips this job and deploy-prod.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.deploy-prod-enabled
+    environment: prod
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -446,13 +478,49 @@ jobs:
       image-digest: ${{ steps.promote.outputs.digest }}
     env:
       APP: ${{ inputs.app }}
-      MAIN_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-      DEVELOP_SHA: ${{ github.event.pull_request.head.sha }}
+      MAIN_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
     steps:
+      - name: Check the prod Environment is protected
+        # GitHub silently creates an unprotected Environment when a job names one that does not
+        # exist (a new service repo nobody configured yet), and then runs this job with no approval.
+        # Refuse to release in that case. Public repos only: on the Free plan GitHub offers required
+        # reviewers only for public repositories.
+        run: |
+          set -euo pipefail
+          if ! env_json=$(gh api "repos/$REPO/environments/prod"); then
+            echo "::error title=PROD release refused::Could not read the prod Environment of $REPO."
+            exit 1
+          fi
+          reviewers=$(jq '[.protection_rules[]? | select(.type == "required_reviewers")] | length' <<<"$env_json")
+          branch_policy=$(jq -c '.deployment_branch_policy' <<<"$env_json")
+          if [ "$reviewers" = 0 ] || [ "$branch_policy" = null ]; then
+            echo "::error title=PROD release refused::The prod Environment of $REPO has no required reviewer or no deployment branch rule, so this release was not approved. Configure it as in new-service-repo/README.md (lego-server-configuration), then re-run this job."
+            exit 1
+          fi
+          echo "prod Environment: $reviewers required-reviewer rule(s), deployment branches $branch_policy."
+      - name: Find the develop commit being released
+        # A release is the merge of develop into main, so main's new commit must be a merge commit
+        # whose second parent is a commit on develop. A direct commit or a merge of any other branch
+        # has no DEV image and is refused.
+        run: |
+          set -euo pipefail
+          parents=$(gh api "repos/$REPO/commits/$MAIN_SHA" --jq '[.parents[].sha] | join(" ")')
+          read -r -a parent <<<"$parents"
+          if [ "${#parent[@]}" -ne 2 ]; then
+            echo "::error title=PROD promotion refused::main $MAIN_SHA has ${#parent[@]} parent(s) ($parents), so it is not the merge of develop into main. Release to PROD only by merging a develop -> main pull request (merge commit, not squash or rebase)."
+            exit 1
+          fi
+          develop_sha=${parent[1]}
+          status=$(gh api "repos/$REPO/compare/$develop_sha...develop" --jq .status)
+          if [ "$status" != identical ] && [ "$status" != ahead ]; then
+            echo "::error title=PROD promotion refused::The merged commit $develop_sha is not on develop (compare status '$status'). Release to PROD only by merging develop into main."
+            exit 1
+          fi
+          echo "DEVELOP_SHA=$develop_sha" >> "$GITHUB_ENV"
+          echo "Releasing develop $develop_sha as main $MAIN_SHA."
       - name: Check main has exactly the develop commit's code
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           main_tree=$(gh api "repos/$REPO/git/commits/$MAIN_SHA" --jq .tree.sha)
@@ -483,18 +551,22 @@ jobs:
 
   deploy-prod:
     name: Deploy PROD
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.head_ref == 'develop' && inputs.deploy-prod-enabled
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.deploy-prod-enabled
     needs: prod-promote
     # E4: one PROD deploy at a time per service; a newer merge replaces any deploy still
     # waiting, so the latest merge is the one that ends up running.
     concurrency:
       group: deploy-prod-${{ inputs.app }}
       cancel-in-progress: false
-    runs-on: [arc-runner]
+    # No `environment:` here on purpose (HOMELAB-29): prod-promote already carried the approval,
+    # and naming `prod` again would ask for a second one.
+    # The dedicated PROD runner (HOMELAB-29): the only runner whose ServiceAccount
+    # (arc-runners/arc-deployer-prod) is bound in services-prod. The shared [arc-runner] has no
+    # rights there, and [arc-runner-prod] fails any job that is not a push to main of an
+    # allowlisted service repo (github-runner/hooks/prod-job-guard.sh).
+    runs-on: [arc-runner-prod]
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
       - name: Deploy by digest
         env:
           APP: ${{ inputs.app }}
@@ -516,6 +588,7 @@ jobs:
           kubectl rollout status deployment "$APP" -n "services-$ENV_NAME" --timeout=5m
           echo "Deployed quay.io/tvattima/$APP@$IMAGE_DIGEST to services-$ENV_NAME" >> "$GITHUB_STEP_SUMMARY"
       - name: Smoke check through the ingress
+        id: smoke
         # E10: the rollout only proves the pod is ready inside the cluster. This checks the service
         # end to end - DNS, Traefik IngressRoute, TLS certificate, default-headers Middleware - by
         # calling /actuator/health/readiness on the host the IngressRoute actually serves. A failure
@@ -532,6 +605,7 @@ jobs:
             exit 1
           fi
           url="https://$host/actuator/health/readiness"
+          echo "url=https://$host" >> "$GITHUB_OUTPUT"
           code=000
           for attempt in $(seq 1 12); do
             code=$(curl -sS -o readiness.json -w '%{http_code}' --max-time 10 "$url" 2>curl.err || true)

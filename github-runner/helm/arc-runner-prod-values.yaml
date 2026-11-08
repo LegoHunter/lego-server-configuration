@@ -1,0 +1,46 @@
+# Helm values for the `arc-runner-prod` GitHub Actions runner scale set (namespace arc-runners),
+# the dedicated PROD deploy runner (HOMELAB-29).
+#
+# Chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set  (0.14.2)
+# Used only by the deploy-prod job of .github/workflows/k8s-service-pipeline.yml
+# (`runs-on: [arc-runner-prod]`).
+#
+# Why a second runner: a runner's cluster rights come from its pod ServiceAccount, not from a GitHub
+# secret, so every job that lands on a runner gets them, whatever branch or repo it comes from.
+# GitHub Environment approvals cannot stop that. So:
+#   * the shared `arc-runner` (arc-deployer) is never bound in services-prod;
+#   * this runner (arc-deployer-prod) is bound ONLY in services-prod (../rbac/arc-deployer-prod.yaml);
+#   * this runner refuses every job except a push to main of a repo in PROD_RUNNER_ALLOWED_REPOS
+#     (../hooks/prod-job-guard.sh). The org is on GitHub Free, which has no custom runner groups,
+#     so this hook is what limits which repositories and branches can use the runner.
+#
+# This file holds NO secrets. See ../README.md for the install/upgrade procedure.
+
+githubConfigUrl: "https://github.com/LegoHunter"
+
+# Same GitHub App credentials as arc-runner (Secret arc-runners/arc-runners-auth). Plain string.
+githubConfigSecret: arc-runners-auth
+
+runnerScaleSetName: "arc-runner-prod"
+minRunners: 0
+# One PROD deploy at a time is plenty; the pipeline also serializes per service (E4).
+maxRunners: 1
+
+template:
+  spec:
+    # Deploy-only, bound only in services-prod: see ../rbac/arc-deployer-prod.yaml.
+    serviceAccountName: arc-deployer-prod
+    containers:
+      - name: runner
+        # Same image as arc-runner (built from ../Dockerfile). Keep both values files on the same
+        # tag; .github/workflows/arc-runner-image.yml checks that they match.
+        image: quay.io/tvattima/arc-runner-arm64:k8s-v9
+        command: ["/home/runner/run.sh"]
+        env:
+          # Runs before every job; a non-zero exit fails the job before its first step.
+          - name: ACTIONS_RUNNER_HOOK_JOB_STARTED
+            value: /opt/lcms/hooks/prod-job-guard.sh
+          # Space-separated owner/name of the service repos allowed to deploy to PROD.
+          # Adding a service: append it here and run the helm upgrade from ../README.md.
+          - name: PROD_RUNNER_ALLOWED_REPOS
+            value: "LegoHunter/lego-data-service LegoHunter/lego-data-ingress"

@@ -27,5 +27,5 @@ template:
     containers:
       - name: runner
         # Built from ../Dockerfile (actions-runner + kubectl).
-        image: quay.io/tvattima/arc-runner-arm64:k8s-v8
+        image: quay.io/tvattima/arc-runner-arm64:k8s-v9
         command: ["/home/runner/run.sh"]

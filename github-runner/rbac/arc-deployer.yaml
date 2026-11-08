@@ -15,8 +15,10 @@
 #   kubectl rollout restart / rollout status deployment/<app>
 # There is deliberately no `delete`, no Secrets/ConfigMaps access, and no cluster-wide binding.
 #
-# Adding an environment (e.g. once services-dev exists): copy the RoleBinding below and change
-# its namespace. Apply with an admin context:  kubectl apply -f github-runner/rbac/arc-deployer.yaml
+# Bound in services-sandbox and services-dev (the shared runner deploys SANDBOX and DEV).
+# NEVER bind it in services-prod: every job on arc-runner, from any branch, would then be able to
+# deploy to PROD. PROD has its own runner and ServiceAccount, see ./arc-deployer-prod.yaml
+# (HOMELAB-29). Apply with an admin context:  kubectl apply -f github-runner/rbac/arc-deployer.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -59,6 +61,25 @@ kind: RoleBinding
 metadata:
   name: arc-deployer
   namespace: services-sandbox
+  labels:
+    app.kubernetes.io/name: arc-deployer
+    app.kubernetes.io/part-of: github-arc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: arc-deployer
+subjects:
+  - kind: ServiceAccount
+    name: arc-deployer
+    namespace: arc-runners
+---
+# DEV (HOMELAB-29 decision): DEV shares arc-runner with SANDBOX. DEV is redeployed from develop on
+# every merge and holds no PROD data, so a separate DEV runner is not worth its upkeep.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: arc-deployer
+  namespace: services-dev
   labels:
     app.kubernetes.io/name: arc-deployer
     app.kubernetes.io/part-of: github-arc
