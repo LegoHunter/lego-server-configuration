@@ -36,6 +36,8 @@ These were made by hand with `rpk`, so this list is the only record.
     `sandbox-s3-events-group`.
   - `sandbox-upload-*`, `sandbox-delete-photo` and `sandbox-*-entry`: the routed topics.
   - `dev-test-topic`.
+  - `dev-s3-events` (HOMELAB-54, created by `05-dev-s3-events-topic.sh`): silo-dev's DEV bucket
+    events, consumed by DEV ingress as `dev-s3-events-group` once HOMELAB-57 wires DEV up.
   - There are **no DEV (`dev-*`) application topics**: DEV ingress has never been wired up
     (HOMELAB-28).
 - **Retention:** the cluster default, 7 days.

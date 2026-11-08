@@ -8,7 +8,7 @@ of concept are in HOMELAB-48.
 | Folder | What |
 |---|---|
 | `silo-prod/` | The dedicated PROD store (HOMELAB-48) |
-| `silo-dev/` | SANDBOX and DEV, replacing `minio-dev` (HOMELAB-54); to come |
+| `silo-dev/` | SANDBOX and DEV, replacing `minio-dev` (HOMELAB-54) |
 
 **Naming rule:** infrastructure is called **silo** (`silo-dev`, `silo-prod`,
 `console.silo.<env>.internal.legohunter.io`). Application config, classes and Kafka topics use the
