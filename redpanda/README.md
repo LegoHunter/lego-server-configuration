@@ -13,6 +13,9 @@ README instead.
 
 ## Original install log (historical)
 
+> The `mc … minio-dev/…` commands below refer to minio-dev, which was retired on 2026-11-08
+> (HOMELAB-54). SANDBOX and DEV now use `../silo/silo-dev/`.
+
 ### Installing rpk
 
 ssh into 10.0.2.52

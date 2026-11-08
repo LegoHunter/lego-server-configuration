@@ -32,7 +32,8 @@ These were made by hand with `rpk`, so this list is the only record.
   - `devproducer`: write and describe on the topic;
   - `devconsumer`: read and describe on the topic and on `<topic>-group`.
 - **Topics:**
-  - `sandbox-s3-events`: 3 partitions. minio-dev's bucket events go here; ingress consumes it as
+  - `sandbox-s3-events`: 3 partitions. silo-dev's SANDBOX bucket events go here (minio-dev's until
+    2026-11-08, HOMELAB-54); ingress consumes it as
     `sandbox-s3-events-group`.
   - `sandbox-upload-*`, `sandbox-delete-photo` and `sandbox-*-entry`: the routed topics.
   - `dev-test-topic`.

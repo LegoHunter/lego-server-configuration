@@ -71,6 +71,10 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
   - **6c:** the lego-data-ingress HOMELAB-54 branch was deployed to SANDBOX; readiness UP.
   - **7:** the event rules were added (helm revision 2).
   - **8:** a dummy upload under `photos/` was routed, rejected and moved to `photos/rejected/` in 451 ms. A `poc/` delete in the photos bucket arrived as `s3:ObjectRemoved:Delete`. The test objects were removed.
+- **Retirement, 2026-11-08 (owner go-ahead):**
+  - **R1:** the `minio-dev` tenant and namespace were deleted, with all 48 PVs (reclaim `Delete`). Nothing outside the namespace referred to it; silo-dev, SANDBOX ingress (readiness 200) and `monitoring/minio-loki` were unaffected.
+  - **R2:** `minio/` was removed from this repo. The `*.minio.dev` DNS records are the owner's to remove.
+  - **R3:** HOMELAB-51.
 - **Lesson:** `redpanda-dev-users` in Infisical Development held stale `devproducer`/`devconsumer`
   passwords. Silo's targets failed SASL until the owner corrected them, after which the servers
   had a rolling restart. The `admin_password` there is stale too (HOMELAB-50); scripts read
