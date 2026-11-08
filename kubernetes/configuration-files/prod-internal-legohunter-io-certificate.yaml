@@ -1,0 +1,21 @@
+# Let's Encrypt wildcard certificate for the PROD services' hostnames
+# (<app>.prod.internal.legohunter.io). Each service's PROD overlay points its IngressRoute TLS at the
+# secret prod-internal-legohunter-io-tls (HOMELAB-28). Same shape as SANDBOX's
+# services-sandbox/sandbox-internal-legohunter-io. cert-manager renews it automatically.
+#
+# Infrastructure consoles under prod.internal (console.redpanda.prod…, console.silo.prod…) have
+# their own certificates in their own namespaces.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: prod-internal-legohunter-io
+  namespace: services-prod
+spec:
+  secretName: prod-internal-legohunter-io-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  commonName: "*.prod.internal.legohunter.io"
+  dnsNames:
+    - prod.internal.legohunter.io
+    - "*.prod.internal.legohunter.io"
