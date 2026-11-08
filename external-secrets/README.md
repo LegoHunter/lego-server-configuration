@@ -73,7 +73,7 @@ the existing Secrets are kept as they are. Re-apply the previous store definitio
 |---|---|---|
 | Sandbox | `infisical-api-token` ("LegoHunter-IO Sandbox") | Working. In this repo the store's projectSlug is corrected to `legohunter-io-g-ua3`; service tokens ignore it, so applying that changes no behaviour. |
 | Development | `infisical-dev-token` ("LegoHunter-IO Development") | Switched 2026-11-07 (HOMELAB-47). Until then the store used the Sandbox token, so it really read Sandbox. Its only consumer, `redpanda-dev/redpanda-users`, re-synced with identical data. |
-| Production | `infisical-prod-token` ("LegoHunter-IO Production") | Store created and validated 2026-11-07 (HOMELAB-47). No PROD secrets or ExternalSecrets yet. |
+| Production | `infisical-prod-token` ("LegoHunter-IO Production") | Store created and validated 2026-11-07 (HOMELAB-47). `services-prod-external-secret` (HOMELAB-28) copies **only secrets named `*.yml`** (`regexp: \.yml$`), so the infrastructure credentials kept in Production (`redpanda-prod-users`, `silo-prod-root`, `silo-prod-ingress`) never reach the services. |
 
 Now that Development is switched, `redpanda-dev-users` in Sandbox is unused and can be deleted. Also move
 `pihole-password` out of Sandbox, because `services-sandbox-external-secret` exposes every Sandbox
