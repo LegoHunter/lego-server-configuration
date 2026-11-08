@@ -1,17 +1,16 @@
-# syntax = docker/dockerfile:1
+# ARC runner image: GitHub's actions-runner plus kubectl, for the deploy jobs.
+#
+# Built and pushed by .github/workflows/arc-runner-image.yml whenever this file changes. The tag is
+# the image: line in helm/arc-runner-values.yaml.
+#
+# There is no RUN step, so the arm64 image builds on GitHub's amd64 runners without emulation, the
+# same way the service images are built. The base image already has curl, jq, unzip and git.
+# kubectl is copied from the official image and kept within one minor version of the cluster.
+#
+# GitHub deprecates old runner versions every few months. Deploy jobs then stay queued while ARC
+# runners show the state "Outdated". To fix: bump the actions-runner version here, bump the tag in
+# helm/arc-runner-values.yaml, push, and run the helm upgrade from README.md.
+FROM registry.k8s.io/kubectl:v1.32.8 AS kubectl
+
 FROM ghcr.io/actions/actions-runner:2.338.2
-
-ARG KUBECTL_VERSION=v1.32.8
-
-USER root
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    jq \
-    && curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/arm64/kubectl" \
-    && chmod +x kubectl \
-    && mv kubectl /usr/local/bin/ \
-    && rm -rf /var/lib/apt/lists/*
-
-USER runner
-
+COPY --from=kubectl /bin/kubectl /usr/local/bin/kubectl

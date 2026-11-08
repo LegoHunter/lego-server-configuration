@@ -1,0 +1,75 @@
+# Builds the ARC runner image (github-runner/Dockerfile) for arm64 and pushes it to Quay.
+#
+# The tag comes from the image: line in github-runner/helm/arc-runner-values.yaml, so the values file
+# names the image that will exist. An existing tag is never overwritten: bump the tag (k8s-v<N+1>)
+# with every change. Deploying the new image is still a manual helm upgrade (github-runner/README.md).
+name: ARC runner image
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - develop
+    paths:
+      - github-runner/Dockerfile
+      - github-runner/helm/arc-runner-values.yaml
+      - .github/workflows/arc-runner-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arc-runner-image
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build and push the runner image
+    # GitHub-hosted on purpose: this job must work when the ARC runners themselves are broken.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the tag from the values file
+        id: tag
+        run: |
+          image=$(grep -E '^\s*image:\s*quay\.io/tvattima/arc-runner-arm64:' github-runner/helm/arc-runner-values.yaml | head -1 | awk '{print $2}')
+          if [ -z "$image" ]; then
+            echo "::error::No quay.io/tvattima/arc-runner-arm64 image line in github-runner/helm/arc-runner-values.yaml"
+            exit 1
+          fi
+          echo "tag=${image##*:}" >> "$GITHUB_OUTPUT"
+          echo "Runner image: $image" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Refuse to overwrite an existing tag
+        run: |
+          if skopeo inspect --raw "docker://quay.io/tvattima/arc-runner-arm64:${{ steps.tag.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::notice::quay.io/tvattima/arc-runner-arm64:${{ steps.tag.outputs.tag }} already exists; nothing to build. Bump the tag to publish a new image."
+            echo "exists=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Buildah build
+        if: env.exists != 'true'
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: quay.io/tvattima/arc-runner-arm64
+          tags: ${{ steps.tag.outputs.tag }}
+          platforms: linux/arm64
+          containerfiles: ./github-runner/Dockerfile
+          context: ./github-runner
+
+      - name: Push to Quay
+        if: env.exists != 'true'
+        id: push
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          registry: quay.io
+          image: tvattima/arc-runner-arm64
+          tags: ${{ steps.tag.outputs.tag }}
+          username: ${{ vars.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_TOKEN }}
+
+      - name: Summary
+        if: env.exists != 'true'
+        run: echo "Pushed quay.io/tvattima/arc-runner-arm64:${{ steps.tag.outputs.tag }}@${{ steps.push.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
