@@ -1,4 +1,25 @@
-# MinIO
+# MinIO (minio-dev)
+
+> **Being retired.** MinIO's open-source server is archived. SANDBOX and DEV move to `silo-dev`
+> (HOMELAB-54); PROD already runs on `../silo/silo-prod/`. The commands below are historical, from
+> the original install. The live state is recorded under "Live bucket events" below.
+
+## Live bucket events (as of 2026-11-08)
+
+Tenant `minio-dev` (operator v7.1.1, RELEASE.2025-09-07), 4 servers.
+
+| Bucket | Events | Target (`notify_kafka:<id>`) | Topic | Notes |
+|---|---|---|---|---|
+| `lego-uploads-sandbox` | created and removed | `sandbox-minio-s3-events` | `sandbox-s3-events` | Working. Switched from `sandbox-minio-s3-events` on 2026-11-08 (HOMELAB-53). The target id keeps its old name because ARNs can't be renamed in place |
+| `lego-photos-sandbox` | removed | `sandbox-delete-photo` | `sandbox-minio-s3-events` (deleted) | **Broken:** `tls=on` against redpanda-dev's plaintext 9092, so it cannot connect (HOMELAB-55) |
+
+The targets `lego-photos-sandbox` and `dev-rebrickable-catalog-upload` exist but no bucket uses
+them (HOMELAB-55 removes them). Every target uses `sasl_username=devproducer`, `SHA512`,
+`queue_dir=/tmp`.
+
+Changing a target's settings needs `mc admin service restart`. MinIO tests the connection before it
+saves a target, and refuses the change if the test fails.
+
 
 ### Installation
 
