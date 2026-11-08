@@ -65,6 +65,16 @@ Each step is applied with `lcms-admin`, on the owner's authorization.
   - `lego-uploads-sandbox`: 2.7 GiB, 358 objects.
   - `lego-photos-sandbox`: 2.9 GiB, 2,349 objects.
   - minio-dev had no DEV buckets.
+- **Cutover, steps 6–8, done:**
+  - **6a:** the final incremental pass found no changes.
+  - **6b:** the owner switched Infisical Sandbox `s3-configuration.yml` to `lcms-ingress-sandbox`.
+  - **6c:** the lego-data-ingress HOMELAB-54 branch was deployed to SANDBOX; readiness UP.
+  - **7:** the event rules were added (helm revision 2).
+  - **8:** a dummy upload under `photos/` was routed, rejected and moved to `photos/rejected/` in 451 ms. A `poc/` delete in the photos bucket arrived as `s3:ObjectRemoved:Delete`. The test objects were removed.
+- **Lesson:** `redpanda-dev-users` in Infisical Development held stale `devproducer`/`devconsumer`
+  passwords. Silo's targets failed SASL until the owner corrected them, after which the servers
+  had a rolling restart. The `admin_password` there is stale too (HOMELAB-50); scripts read
+  `redpanda-dev-superusers`.
 
 Between steps 6(a) and 7, nothing new may be written to minio-dev. lego-data-ingress is its only
 client, and it switches in 6(c).
