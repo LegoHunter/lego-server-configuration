@@ -1,0 +1,21 @@
+# Let's Encrypt wildcard certificate for the DEV services' hostnames
+# (<app>.dev.internal.legohunter.io). Each service's DEV overlay points its IngressRoute TLS at the
+# secret dev-internal-legohunter-io-tls (HOMELAB-57). Same shape as PROD's
+# services-prod/prod-internal-legohunter-io. cert-manager renews it automatically.
+#
+# Infrastructure consoles under dev.internal (console.silo.dev…, the redpanda-dev console) have their
+# own certificates in their own namespaces.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dev-internal-legohunter-io
+  namespace: services-dev
+spec:
+  secretName: dev-internal-legohunter-io-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  commonName: "*.dev.internal.legohunter.io"
+  dnsNames:
+    - dev.internal.legohunter.io
+    - "*.dev.internal.legohunter.io"
