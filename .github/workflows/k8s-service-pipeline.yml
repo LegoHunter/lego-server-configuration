@@ -131,7 +131,7 @@ jobs:
               if [ "$other" = 0 ]; then docs_only=true; fi
             fi
             echo "Changed files: $count; docs-only: $docs_only"
-            jq -r '.files[].filename' <<<"$json" | head -50
+            jq -r '.files[:50][].filename' <<<"$json"
           else
             echo "Compare $base...$head failed: running everything."
           fi
