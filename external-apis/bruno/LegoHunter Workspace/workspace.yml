@@ -4,18 +4,30 @@ info:
   type: workspace
 
 collections:
+  - name: "Bitly API Requests"
+    path: "../Bitly API Requests"
+  - name: "Bricklink AJAX Requests"
+    path: "../Bricklink AJAX Requests"
+  - name: "Bricklink API Requests"
+    path: "../Bricklink API Requests"
+  - name: "eBay API Requests"
+    path: "../eBay API Requests"
+  - name: "Flickr API Requests"
+    path: "../Flickr API Requests"
   - name: "LegoHunter Service Requests"
-    path: "collections/LegoHunter Service Requests"
+    path: "../LegoHunter Service Requests"
+  - name: "Bitly API Requests"
+    path: "collections/Bitly API Requests"
   - name: "Bricklink AJAX Requests"
     path: "collections/Bricklink AJAX Requests"
   - name: "Bricklink API Requests"
     path: "collections/Bricklink API Requests"
-  - name: "Bitly API Requests"
-    path: "collections/Bitly API Requests"
-  - name: "Flickr API Requests"
-    path: "collections/Flickr API Requests"
   - name: "eBay API Requests"
     path: "collections/eBay API Requests"
+  - name: "Flickr API Requests"
+    path: "collections/Flickr API Requests"
+  - name: "LegoHunter Service Requests"
+    path: "collections/LegoHunter Service Requests"
 
 specs:
 

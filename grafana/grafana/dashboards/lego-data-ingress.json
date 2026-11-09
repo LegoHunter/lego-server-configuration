@@ -1456,13 +1456,14 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (result) (increase(bricklink_pricing_crawl_snapshot_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
+          "expr": "sum by (result) (increase(bricklink_pricing_crawl_fetch_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{result}}",
           "refId": "A"
         }
       ],
-      "title": "Pricing Crawl Snapshot Writes",
-      "type": "timeseries"
+      "title": "Pricing Crawl Fetches",
+      "type": "timeseries",
+      "description": "Shared BrickLink crawler fetches (HOMELAB-32): succeeded, empty (no lots for sale) and failed. Failed rising while succeeded stays flat means a ban, block or maintenance."
     },
     {
       "datasource": {
@@ -1549,13 +1550,14 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (state) (bricklink_pricing_crawl_work_item_current{namespace=\"$namespace\",service=\"$service\"})",
+          "expr": "sum by (state) (bricklink_pricing_crawl_target_current{namespace=\"$namespace\",service=\"$service\"})",
           "legendFormat": "{{state}}",
           "refId": "A"
         }
       ],
-      "title": "Pricing Crawl Work Queue",
-      "type": "timeseries"
+      "title": "Pricing Crawl Queue",
+      "type": "timeseries",
+      "description": "Shared crawl targets (marketplace_pricing.crawl_target) by state: idle, claimed, disabled, due, failing. Shared by every environment."
     },
     {
       "datasource": {
@@ -2060,13 +2062,14 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (result) (increase(bricklink_pricing_crawl_catalog_item_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
+          "expr": "sum by (result) (increase(bricklink_pricing_crawl_target_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{result}}",
           "refId": "A"
         }
       ],
-      "title": "Pricing Catalog ID Hydration Outcomes",
-      "type": "timeseries"
+      "title": "Pricing Crawl Queue Changes",
+      "type": "timeseries",
+      "description": "Crawl targets created, re-enabled, disabled and claimed per run."
     },
     {
       "datasource": {
@@ -2153,13 +2156,14 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (result) (increase(bricklink_pricing_crawl_snapshot_total{namespace=\"$namespace\",service=\"$service\",result=~\"snapshot|zero_comparable_snapshot\"}[$__rate_interval]))",
+          "expr": "sum by (result) (increase(bricklink_pricing_want_list_item_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{result}}",
           "refId": "A"
         }
       ],
-      "title": "Pricing Zero Comparable Snapshots",
-      "type": "timeseries"
+      "title": "Pricing Want List",
+      "type": "timeseries",
+      "description": "This environment's want list sync: confirmed, canonical items added, skipped, pruned."
     },
     {
       "datasource": {
