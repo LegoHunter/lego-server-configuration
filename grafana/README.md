@@ -66,3 +66,6 @@ Import over the existing dashboard: the file keeps its original `uid`
 (`lego-data-ingress-photo-pipeline`, from before the file was renamed), so Grafana replaces the
 dashboard in place instead of creating a copy. Choose the Prometheus data source for
 `DS_PROMETHEUS` when asked.
+
+The **Namespace** dropdown switches it between SANDBOX (`services-sandbox`, the default) and DEV
+(`services-dev`). Service is fixed to `lego-data-ingress`.

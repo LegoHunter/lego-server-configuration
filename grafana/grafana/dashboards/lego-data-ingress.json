@@ -3642,17 +3642,31 @@
     "list": [
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "services-sandbox",
           "value": "services-sandbox"
         },
+        "description": "Kubernetes namespace of the lego-data-ingress deployment (SANDBOX or DEV).",
         "hide": 0,
+        "includeAll": false,
         "label": "Namespace",
+        "multi": false,
         "name": "namespace",
-        "options": [],
-        "query": "services-sandbox",
+        "options": [
+          {
+            "selected": true,
+            "text": "services-sandbox",
+            "value": "services-sandbox"
+          },
+          {
+            "selected": false,
+            "text": "services-dev",
+            "value": "services-dev"
+          }
+        ],
+        "query": "services-sandbox,services-dev",
         "skipUrlSync": false,
-        "type": "constant"
+        "type": "custom"
       },
       {
         "current": {
