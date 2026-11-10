@@ -1768,6 +1768,24 @@
           "expr": "sum (bricklink_pricing_decision_current{namespace=\"$namespace\",service=\"$service\",status=\"skipped\",unapplied_only=\"false\"})",
           "legendFormat": "Skipped / fixed price",
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum (bricklink_pricing_decision_current{namespace=\"$namespace\",service=\"$service\",status=\"accepted\",unapplied_only=\"false\"})",
+          "legendFormat": "Accepted, awaiting sync",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum (bricklink_pricing_decision_current{namespace=\"$namespace\",service=\"$service\",status=\"sync_failed\",unapplied_only=\"false\"})",
+          "legendFormat": "Sync failed",
+          "refId": "F"
         }
       ],
       "title": "Latest Pricing Decision Status",
