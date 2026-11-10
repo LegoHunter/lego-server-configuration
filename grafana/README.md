@@ -60,12 +60,13 @@ No provisioning config loads it.
 
 | File | Dashboard | What it covers |
 | --- | --- | --- |
-| `lego-data-ingress.json` | Lego Data Ingress - Pipelines | lego-data-ingress service health, photo ingestion, Flickr sync, HTTP/Kafka, the Pricing Plane (including pricing data-quality gaps), and the marketplace reconciliation and lower-environment lot audit |
+| `lego-data-ingress.json` | Lego Data Ingress - Pipelines | lego-data-ingress service health, photo ingestion, Flickr sync, HTTP/Kafka, the Pricing Plane (including pricing data-quality gaps), the Reprice job (latest decision per listing with its guard outcome, and its sync hand-offs), and the marketplace reconciliation and lower-environment lot audit |
 
 Import over the existing dashboard: the file keeps its original `uid`
 (`lego-data-ingress-photo-pipeline`, from before the file was renamed), so Grafana replaces the
 dashboard in place instead of creating a copy. Choose the Prometheus data source for
-`DS_PROMETHEUS` when asked.
+`DS_PROMETHEUS` and the Loki data source for `DS_LOKI` when asked. The **Reprice** row's two tables
+read the RepriceJob log lines from Loki; the rest of the dashboard is Prometheus.
 
 The **Namespace** dropdown switches it between SANDBOX (`services-sandbox`, the default) and DEV
 (`services-dev`). Service is fixed to `lego-data-ingress`.

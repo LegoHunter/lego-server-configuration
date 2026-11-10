@@ -7,6 +7,14 @@
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
+    },
+    {
+      "name": "DS_LOKI",
+      "label": "Loki",
+      "description": "Loki datasource that receives lego-data-ingress logs (via Alloy)",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
     }
   ],
   "__requires": [
@@ -21,6 +29,18 @@
       "id": "prometheus",
       "name": "Prometheus",
       "version": "1.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "loki",
+      "name": "Loki",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
     }
   ],
   "annotations": {
@@ -3647,6 +3667,739 @@
       "title": "Reconciliation and Audit Runs",
       "type": "timeseries",
       "description": "Runs by outcome. reconciliation: in_sync, drift_found, failed. audit: clean, violations_found, failed."
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 103
+      },
+      "id": 50,
+      "panels": [],
+      "title": "Reprice",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 104
+      },
+      "id": 51,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (result) (increase(pricing_reprice_decision_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
+          "legendFormat": "decision {{result}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (result) (increase(pricing_reprice_listing_total{namespace=\"$namespace\",service=\"$service\",result=~\"waiting_for_sync|error\"}[$__rate_interval]))",
+          "legendFormat": "listing {{result}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (result) (increase(pricing_reprice_sync_total{namespace=\"$namespace\",service=\"$service\"}[$__rate_interval]))",
+          "legendFormat": "sync {{result}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Reprice Decisions and Hand-offs",
+      "type": "timeseries",
+      "description": "Per-run results of RepriceJob: decisions by result, listings skipped because a sync request is still in flight, and sync requests handed straight to marketplace sync (confirmed = BrickLink read back the new price)."
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "description": "The newest decision RepriceJob made for each listing in the selected time range, read from its pricing.reprice.decided log lines: decision status, guard outcome, prices and the sync request it queued. Widen the time range to reach older decisions. The runbook query (RepriceJob section) gives the same from the database, with the sync request's current status.",
+      "id": 52,
+      "title": "Latest Reprice Decision per Listing",
+      "type": "table",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 111
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Decision status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASSED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "PASSED"
+                      },
+                      "BLOCKED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "BLOCKED"
+                      },
+                      "APPLIED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "APPLIED"
+                      },
+                      "ACCEPTED": {
+                        "color": "blue",
+                        "index": 0,
+                        "text": "ACCEPTED"
+                      },
+                      "PROPOSED": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "PROPOSED"
+                      },
+                      "SYNC_FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "SYNC_FAILED"
+                      },
+                      "SUCCEEDED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "SUCCEEDED"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "FAILED"
+                      },
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 0,
+                        "text": "PENDING"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Guard"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASSED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "PASSED"
+                      },
+                      "BLOCKED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "BLOCKED"
+                      },
+                      "APPLIED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "APPLIED"
+                      },
+                      "ACCEPTED": {
+                        "color": "blue",
+                        "index": 0,
+                        "text": "ACCEPTED"
+                      },
+                      "PROPOSED": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "PROPOSED"
+                      },
+                      "SYNC_FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "SYNC_FAILED"
+                      },
+                      "SUCCEEDED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "SUCCEEDED"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "FAILED"
+                      },
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 0,
+                        "text": "PENDING"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (marketplaceListingId, pricingDecisionId, status, reasonCode, guardStatus, guardReason, currentPrice, finalPrice, currencyCode, syncRequestId, syncRequestType) (count_over_time({namespace=\"$namespace\", container=\"lego-data-ingress\"} |= \"pricing.reprice.decided\" | json msg=\"message\" | line_format \"{{.msg}}\" | logfmt [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "Value #A": true
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "marketplaceListingId",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "pricingDecisionId",
+                "destinationType": "number"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "pricingDecisionId",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "marketplaceListingId": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "pricingDecisionId": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "status": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "reasonCode": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "guardStatus": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "guardReason": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "currentPrice": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "finalPrice": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "currencyCode": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "syncRequestId": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              },
+              "syncRequestType": {
+                "aggregations": [
+                  "first"
+                ],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "pricingDecisionId (first)": "Decision",
+              "status (first)": "Decision status",
+              "reasonCode (first)": "Reason",
+              "guardStatus (first)": "Guard",
+              "guardReason (first)": "Guard reason",
+              "currentPrice (first)": "Current price",
+              "finalPrice (first)": "Decided price",
+              "currencyCode (first)": "Currency",
+              "syncRequestId (first)": "Sync request",
+              "syncRequestType (first)": "Sync type",
+              "marketplaceListingId": "Listing"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Listing",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "description": "Sync requests RepriceJob handed straight to marketplace sync (pricing.reprice.handed_off: sent, and the request's status afterwards), deferred or failed hand-offs, and the sync outcomes: price_confirmed / listing_created (BrickLink has the price) or decision_sync_failed (the decision is SYNC_FAILED). Match rows to the table above by sync request id.",
+      "id": 53,
+      "title": "Reprice Sync Hand-offs and Outcomes",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 121
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Request status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASSED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "PASSED"
+                      },
+                      "BLOCKED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "BLOCKED"
+                      },
+                      "APPLIED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "APPLIED"
+                      },
+                      "ACCEPTED": {
+                        "color": "blue",
+                        "index": 0,
+                        "text": "ACCEPTED"
+                      },
+                      "PROPOSED": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "PROPOSED"
+                      },
+                      "SYNC_FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "SYNC_FAILED"
+                      },
+                      "SUCCEEDED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "SUCCEEDED"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "FAILED"
+                      },
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 0,
+                        "text": "PENDING"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Request status (final)"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "PASSED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "PASSED"
+                      },
+                      "BLOCKED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "BLOCKED"
+                      },
+                      "APPLIED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "APPLIED"
+                      },
+                      "ACCEPTED": {
+                        "color": "blue",
+                        "index": 0,
+                        "text": "ACCEPTED"
+                      },
+                      "PROPOSED": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "PROPOSED"
+                      },
+                      "SYNC_FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "SYNC_FAILED"
+                      },
+                      "SUCCEEDED": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "SUCCEEDED"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "FAILED"
+                      },
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 0,
+                        "text": "PENDING"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (event, marketplaceListingSyncRequestId, marketplaceListingId, pricingDecisionId, sent, requestStatus, syncRequestStatus, previousPrice, confirmedPrice, requestedPrice) (count_over_time({namespace=\"$namespace\", container=\"lego-data-ingress\"} |~ \"pricing[.]reprice[.]hand_off|pricing[.]reprice[.]handed_off|bricklink[.]marketplace_sync[.](price_confirmed|listing_created|decision_sync_failed)\" | json msg=\"message\" | line_format \"{{.msg}}\" | regexp \"^(?P<event>[^ ]+)\" | logfmt [$__range]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "Value #A": true
+            },
+            "renameByName": {
+              "event": "Event",
+              "marketplaceListingSyncRequestId": "Sync request",
+              "marketplaceListingId": "Listing",
+              "pricingDecisionId": "Decision",
+              "sent": "Sent",
+              "requestStatus": "Request status",
+              "syncRequestStatus": "Request status (final)",
+              "previousPrice": "Previous price",
+              "confirmedPrice": "Confirmed price",
+              "requestedPrice": "Requested price"
+            }
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "Sync request",
+                "destinationType": "number"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Sync request",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
     }
   ],
   "preload": false,
