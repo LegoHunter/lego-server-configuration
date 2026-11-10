@@ -3071,7 +3071,18 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "Never since restart",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -3124,14 +3135,14 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "time() - max(bricklink_inventory_reconciliation_last_success_timestamp_seconds{namespace=\"$namespace\",service=\"$service\"})",
+          "expr": "(time() - max(bricklink_inventory_reconciliation_last_success_timestamp_seconds{namespace=\"$namespace\",service=\"$service\"} > 0)) or (max(bricklink_inventory_reconciliation_last_success_timestamp_seconds{namespace=\"$namespace\",service=\"$service\"}) * 0 - 1)",
           "legendFormat": "age",
           "refId": "A"
         }
       ],
       "title": "Since Last Reconciliation",
       "type": "stat",
-      "description": "Time since the last reconciliation that read the store. The job runs hourly; a failed store read does not reset this."
+      "description": "Time since the last reconciliation that read the store. The job runs hourly; a failed store read does not reset this. Shows \"Never since restart\" until the first successful store read after the pod starts (the timestamp is kept in memory)."
     },
     {
       "datasource": {
@@ -3143,7 +3154,18 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "Never since restart",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -3196,14 +3218,14 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "time() - max(bricklink_lot_audit_last_success_timestamp_seconds{namespace=\"$namespace\",service=\"$service\"})",
+          "expr": "(time() - max(bricklink_lot_audit_last_success_timestamp_seconds{namespace=\"$namespace\",service=\"$service\"} > 0)) or (max(bricklink_lot_audit_last_success_timestamp_seconds{namespace=\"$namespace\",service=\"$service\"}) * 0 - 1)",
           "legendFormat": "age",
           "refId": "A"
         }
       ],
       "title": "Since Last Lot Audit",
       "type": "stat",
-      "description": "Time since the last lot audit that read the store. The audit runs every 30 minutes; a failed store read does not reset this."
+      "description": "Time since the last lot audit that read the store. The audit runs every 30 minutes; a failed store read does not reset this. Shows \"Never since restart\" until the first successful store read after the pod starts (the timestamp is kept in memory)."
     },
     {
       "datasource": {
