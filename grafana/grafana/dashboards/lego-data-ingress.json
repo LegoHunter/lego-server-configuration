@@ -3744,6 +3744,7 @@
         "y": 104
       },
       "id": 51,
+      "interval": "5m",
       "options": {
         "legend": {
           "calcs": [
@@ -3791,7 +3792,7 @@
       ],
       "title": "Reprice Decisions and Hand-offs",
       "type": "timeseries",
-      "description": "Per-run results of RepriceJob: decisions by result, listings skipped because a sync request is still in flight, and sync requests handed straight to marketplace sync (confirmed = BrickLink read back the new price)."
+      "description": "Per-run results of RepriceJob: decisions by result, listings skipped because a sync request is still in flight, and sync requests handed straight to marketplace sync (confirmed = BrickLink read back the new price). Minimum interval 5m: Prometheus scrapes every minute, so shorter rate windows hold a single sample and show nothing."
     },
     {
       "datasource": {
