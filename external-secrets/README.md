@@ -80,9 +80,17 @@ and every DEV call failed with `401 SIGNATURE_INVALID` until it was fixed by han
 |---|---|
 | `bricklink-client-api-keys.yml` | One BrickLink seller account: one consumer key and secret. One IP-bound access token serves every environment, since all of them call BrickLink from the same home IP; after an IP change, re-register one token and update one file. |
 | the BrickLink MFA mailbox (name set by the web-form spike) | The IONOS mailbox that receives BrickLink's MFA codes for the website login. One mailbox for the one account. |
+| `flickr-api-keys.yml` | One Flickr API application ("Lego Imaging"): `flickr.secrets.key` and `flickr.secrets.secret`. Every environment's Flickr account authorises this same application (HOMELAB-107). |
 
 Candidates to review before moving them: `bricklink-web.yml` (the BrickLink website login, also one
-account), Flickr and Bitly configuration.
+account) and the Bitly configuration.
+
+**Flickr is split.** The API application is account-level and lives in Global (`flickr-api-keys.yml`).
+The Flickr *account* is per environment and stays there: `flickr-configuration.yml` holds only
+`flickr.userId`, `flickr.secrets.token` and `flickr.secrets.tokenSecret`. SANDBOX and DEV each have
+their own free Flickr account, so a lower environment cannot see or change a production album
+(HOMELAB-103, HOMELAB-104). A token is made by authorising the application while signed in to that
+environment's Flickr account; never copy a token from one environment to another.
 
 **What stays per environment:** database, Kafka, S3 and every infrastructure credential. The rule
 "never copy credentials between SANDBOX, DEV and PROD" (workspace `AGENTS.md`) still applies to them;
