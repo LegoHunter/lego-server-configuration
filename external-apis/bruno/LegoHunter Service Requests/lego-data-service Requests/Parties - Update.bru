@@ -1,0 +1,44 @@
+meta {
+  name: Parties - Update
+  type: http
+  seq: 41
+}
+
+put {
+  url: {{lego_data_service_base_url}}/api/v1/parties/215
+  body: json
+  auth: none
+}
+
+params:path {
+  partyId: 215
+}
+
+params:query {
+  ~allowDuplicateName: true
+}
+
+body:json {
+  {
+    "partyType": "P",
+    "partyFirstName": "Sandbox",
+    "partyLastName": "Test Seller (party endpoint check)",
+    "partyEmail": "party-endpoint-check@example.com",
+    "partyCity": "Raleigh",
+    "partyCountry": "USA",
+    "externalIdentities": [
+      { "transactionPlatformName": "Bricklink", "externalPartyId": "sandbox-party-endpoint-check" }
+    ]
+  }
+}
+
+docs {
+  Replaces an existing party's fields and answers 200 with the party (404 if it does not exist).
+
+  - A field left out is cleared, so run "Parties - Find By Id" first and send back what should stay.
+  - Kept when left out: partyType and externalIdentities.
+  - When externalIdentities is sent, it is the full set the party has afterwards; [] removes them all.
+  - 409 with code DUPLICATE_PARTY as for the add, against the other parties. The name is only checked
+    when it changes.
+  - Party 215 is the SANDBOX test seller; change the id for another party or environment.
+}

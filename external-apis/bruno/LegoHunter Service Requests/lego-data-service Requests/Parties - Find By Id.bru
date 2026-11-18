@@ -1,0 +1,19 @@
+meta {
+  name: Parties - Find By Id
+  type: http
+  seq: 39
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/parties/215
+  body: none
+  auth: none
+}
+
+params:path {
+  partyId: 215
+}
+
+docs {
+  One party with its external identities. Answers 404 when the party does not exist.
+}
