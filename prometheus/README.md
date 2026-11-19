@@ -7,7 +7,7 @@ node-exporter and kube-state-metrics). It is not the Prometheus operator, so the
 
 | File | What it is |
 |---|---|
-| `prometheus-values.yaml` | **Not here yet.** The base values of the live release. See [Base values](#base-values). |
+| `prometheus-values.yaml` | The base values of the release, recovered from the cluster on 2026-11-19. See [Base values](#base-values). |
 | `prometheus-alerting-values.yaml` | Every alert rule, and Alertmanager's delivery to Pushover. |
 | `01-pushover-external-secret.yaml` | The Pushover credentials, from Infisical Global into `monitoring/alertmanager-pushover`. |
 | `public-ip-watch/` | The CronJob that reports a change of the home's public IP address. |
@@ -110,7 +110,7 @@ kubectl get externalsecret alertmanager-pushover -n monitoring
 # 2. The public IP watch.
 kubectl apply -k prometheus/public-ip-watch
 
-# 3. Alert rules and Alertmanager. Needs prometheus-values.yaml; see "Base values".
+# 3. Alert rules and Alertmanager.
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm upgrade prometheus prometheus-community/prometheus -n monitoring --version 29.1.0 \
   -f prometheus/prometheus-values.yaml -f prometheus/prometheus-alerting-values.yaml
@@ -133,23 +133,34 @@ kubectl delete job public-ip-watch-test -n monitoring
 Expect a Pushover message "Public IP changed: 192.0.2.1 -> …". The run stores the real address
 again. Run it a second time: the log says `unchanged` and no message arrives.
 
-**The refused-token alert.** In Prometheus (Alerts page), `BricklinkApiCredentialsRejected` is
-listed as inactive. To see it fire without breaking the real token, load a test rule with the same
-shape and a counter that always rises, or wait for the next real refusal.
+**Delivery through Alertmanager.** Send a test alert by hand; it clears itself after three minutes:
+
+```
+kubectl port-forward -n monitoring svc/prometheus-alertmanager 9093:9093
+curl -H 'Content-Type: application/json' http://127.0.0.1:9093/api/v2/alerts -d '[{
+  "labels": {"alertname": "AlertDeliveryTest", "severity": "warning"},
+  "annotations": {"summary": "Alert delivery test", "description": "Test alert sent by hand. No action needed."},
+  "endsAt": "<three minutes from now, e.g. 2026-11-19T22:15:00Z>"}]'
+```
+
+Expect a Pushover message "Alert delivery test" within a minute and "Resolved: Alert delivery test"
+a few minutes after `endsAt`.
+
+**The rules.** The Prometheus Alerts page lists `BricklinkApiCredentialsRejected` and
+`PublicIpWatchNotRunning` as inactive. The first one fires for real only when BrickLink refuses the
+token; do not break the token to test it.
 
 ## Base values
 
-The values the live release was last deployed with are **not in source control**. The file on
-rasppi5-01 (`~/prometheus/values-prometheus.yaml`) turns Alertmanager, the Pushgateway and
-node-exporter off, yet all three run in the cluster, so it is not what was deployed.
+`prometheus-values.yaml` holds the values the release is deployed with. It was recovered on
+2026-11-19 with `helm get values prometheus -n monitoring -o yaml`, and `helm template` of it matched
+the live objects exactly before the alerting values were added.
 
-Before the first Helm upgrade from this folder, recover them and commit them as
-`prometheus-values.yaml`:
+**Four keys in it do nothing.** `sandboxalertmanager`, `pushgateway`, `nodeExporter` and
+`kubeStateMetrics` are set to `enabled: false`, but the chart does not know those names (its keys are
+`alertmanager`, `prometheus-pushgateway`, `prometheus-node-exporter` and `kube-state-metrics`). So
+Alertmanager, the Pushgateway, node-exporter and kube-state-metrics all run, and the alerts and the
+public IP watch depend on the first two. The keys are kept as recovered; do not "fix" them to the
+real names, which would switch those components off.
 
-```
-helm get values prometheus -n monitoring -o yaml > prometheus/prometheus-values.yaml
-```
-
-Read the file before committing: it must not contain a password or token. Then compare
-`helm template` of both files with the live objects before upgrading, so the upgrade changes only
-the alert rules and the Alertmanager configuration.
+The older copy on rasppi5-01 (`~/prometheus/values-prometheus.yaml`) is superseded by this file.
