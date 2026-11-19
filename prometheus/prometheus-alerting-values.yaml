@@ -8,6 +8,9 @@
 # rules, Alertmanager sends them to Pushover. Grafana alerting is not used. Add new rules here.
 
 alertmanager:
+  # The address people reach Alertmanager at (02-alertmanager-ingress.yaml). Alertmanager puts it in
+  # the link each Pushover message carries.
+  baseURL: https://alertmanager.internal.legohunter.io
   # The Pushover credentials, from Infisical through ../01-pushover-external-secret.yaml. They are
   # read from files, so they never appear in the Alertmanager configuration.
   extraSecretMounts:
