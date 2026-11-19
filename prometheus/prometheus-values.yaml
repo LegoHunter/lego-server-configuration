@@ -1,0 +1,185 @@
+# Base Helm values of the release "prometheus" (namespace monitoring, chart
+# prometheus-community/prometheus 29.1.0). Recovered from the cluster on 2026-11-19 with
+# "helm get values" (HOMELAB-6); keys are in the alphabetical order Helm returns them.
+#
+# The four "enabled: false" keys below use names the chart does not know, so they switch nothing
+# off: Alertmanager, the Pushgateway, node-exporter and kube-state-metrics all run. Leave them as
+# they are; see README.md, "Base values".
+#
+# Alert rules and Alertmanager's delivery are in prometheus-alerting-values.yaml.
+kubeStateMetrics:
+  enabled: false
+nodeExporter:
+  enabled: false
+pushgateway:
+  enabled: false
+sandboxalertmanager:
+  enabled: false
+scrapeConfigs:
+  kubernetes-api-servers:
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    enabled: true
+    job_name: ""
+    kubernetes_sd_configs:
+    - role: endpointslice
+    relabel_configs:
+    - action: keep
+      regex: default;kubernetes;https
+      source_labels:
+      - __meta_kubernetes_namespace
+      - __meta_kubernetes_service_name
+      - __meta_kubernetes_endpointslice_port_name
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  kubernetes-nodes:
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    enabled: true
+    job_name: ""
+    kubernetes_sd_configs:
+    - role: node
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+  kubernetes-nodes-cadvisor:
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    enabled: true
+    job_name: ""
+    kubernetes_sd_configs:
+    - role: node
+    metrics_path: /metrics/cadvisor
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - source_labels:
+      - __metrics_path__
+      target_label: metrics_path
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+  kubernetes-service-endpoints:
+    enabled: true
+    honor_labels: true
+    job_name: ""
+    kubernetes_sd_configs:
+    - role: endpointslice
+    relabel_configs:
+    - action: keep
+      regex: true
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_scrape
+    - action: drop
+      regex: true
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_scrape_slow
+    - action: replace
+      regex: (https?)
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_scheme
+      target_label: __scheme__
+    - action: replace
+      regex: (.+)
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_path
+      target_label: __metrics_path__
+    - action: replace
+      regex: (.+?)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      source_labels:
+      - __address__
+      - __meta_kubernetes_service_annotation_prometheus_io_port
+      target_label: __address__
+    - action: labelmap
+      regex: __meta_kubernetes_service_annotation_prometheus_io_param_(.+)
+      replacement: __param_$1
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_namespace
+      target_label: namespace
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_service_name
+      target_label: service
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_pod_node_name
+      target_label: node
+  kubernetes-service-endpoints-slow:
+    enabled: true
+    honor_labels: true
+    job_name: ""
+    kubernetes_sd_configs:
+    - role: endpointslice
+    relabel_configs:
+    - action: keep
+      regex: true
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_scrape_slow
+    - action: replace
+      regex: (https?)
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_scheme
+      target_label: __scheme__
+    - action: replace
+      regex: (.+)
+      source_labels:
+      - __meta_kubernetes_service_annotation_prometheus_io_path
+      target_label: __metrics_path__
+    - action: replace
+      regex: (.+?)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      source_labels:
+      - __address__
+      - __meta_kubernetes_service_annotation_prometheus_io_port
+      target_label: __address__
+    - action: labelmap
+      regex: __meta_kubernetes_service_annotation_prometheus_io_param_(.+)
+      replacement: __param_$1
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_namespace
+      target_label: namespace
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_service_name
+      target_label: service
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_pod_node_name
+      target_label: node
+    scrape_interval: 5m
+    scrape_timeout: 30s
+  prometheus:
+    enabled: true
+    job_name: ""
+    static_configs:
+    - targets:
+      - localhost:9090
+server:
+  image:
+    repository: prom/prometheus
+    tag: v2.52.0
+  persistentVolume:
+    enabled: true
+    size: 25Gi
+    storageClass: topolvm-provisioner
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  retention: 12h
+  service:
+    servicePort: 9090
+    type: ClusterIP
