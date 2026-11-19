@@ -10,6 +10,7 @@ node-exporter and kube-state-metrics). It is not the Prometheus operator, so the
 | `prometheus-values.yaml` | The base values of the release, recovered from the cluster on 2026-11-19. See [Base values](#base-values). |
 | `prometheus-alerting-values.yaml` | Every alert rule, and Alertmanager's delivery to Pushover. |
 | `01-pushover-external-secret.yaml` | The Pushover credentials, from Infisical Global into `monitoring/alertmanager-pushover`. |
+| `02-alertmanager-ingress.yaml` | Alertmanager's web page at `https://alertmanager.internal.legohunter.io`: certificate and route. Shows firing alerts; alerts are silenced there. The link in each Pushover message opens it (home network or VPN). |
 | `public-ip-watch/` | The CronJob that reports a change of the home's public IP address. |
 
 ## How alerts work
@@ -110,7 +111,12 @@ kubectl get externalsecret alertmanager-pushover -n monitoring
 # 2. The public IP watch.
 kubectl apply -k prometheus/public-ip-watch
 
-# 3. Alert rules and Alertmanager.
+# 3. Alertmanager's web page. First add the Technitium A record
+#    alertmanager.internal.legohunter.io -> 10.0.2.80. Wait for the certificate to be Ready.
+kubectl apply -f prometheus/02-alertmanager-ingress.yaml
+kubectl get certificate alertmanager-tls -n monitoring
+
+# 4. Alert rules and Alertmanager.
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm upgrade prometheus prometheus-community/prometheus -n monitoring --version 29.1.0 \
   -f prometheus/prometheus-values.yaml -f prometheus/prometheus-alerting-values.yaml

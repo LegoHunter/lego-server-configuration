@@ -1,0 +1,48 @@
+# Alertmanager's web page at https://alertmanager.internal.legohunter.io (HOMELAB-6).
+#
+# The Pushover message of every alert links to Alertmanager. That link only opens when
+# Alertmanager has an address outside the cluster, which this file gives it; the matching
+# alertmanager.baseURL is in prometheus-alerting-values.yaml. The page shows the firing alerts and
+# is where an alert is silenced (for example during planned maintenance).
+#
+# Reachable on the home network and over the VPN only. Alertmanager has no sign-in: anyone who can
+# open the page can silence an alert.
+#
+# DNS: Technitium needs an A record alertmanager.internal.legohunter.io -> 10.0.2.80 (Traefik).
+# There is no wildcard for *.internal.legohunter.io, so the record is added by hand.
+
+# The certificate, from Let's Encrypt through cert-manager (DNS-01, the same as Grafana's).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: alertmanager-tls
+  namespace: monitoring
+spec:
+  secretName: alertmanager-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  commonName: "alertmanager.internal.legohunter.io"
+  dnsNames:
+    - "alertmanager.internal.legohunter.io"
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  annotations:
+    # Traefik ignores a route without this class.
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`alertmanager.internal.legohunter.io`)
+      kind: Rule
+      services:
+        - kind: Service
+          name: prometheus-alertmanager
+          port: 9093
+  tls:
+    secretName: alertmanager-tls
