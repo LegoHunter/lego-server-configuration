@@ -1,0 +1,78 @@
+# Alert rules and their delivery (HOMELAB-6). Helm values for the prometheus-community/prometheus
+# chart, release "prometheus" in namespace monitoring. Pass this file after the base values:
+#
+#   helm upgrade prometheus prometheus-community/prometheus -n monitoring --version 29.1.0 \
+#     -f prometheus-values.yaml -f prometheus-alerting-values.yaml
+#
+# This is the home of every alert rule (owner decision 2026-11-19): Prometheus evaluates the
+# rules, Alertmanager sends them to Pushover. Grafana alerting is not used. Add new rules here.
+
+alertmanager:
+  # The Pushover credentials, from Infisical through ../01-pushover-external-secret.yaml. They are
+  # read from files, so they never appear in the Alertmanager configuration.
+  extraSecretMounts:
+    - name: pushover
+      mountPath: /etc/alertmanager/pushover
+      secretName: alertmanager-pushover
+      readOnly: true
+  config:
+    route:
+      receiver: pushover
+      # One message per alert name. The BrickLink token is shared by every environment, so a refused
+      # token arrives as one message that lists the environments, not one message each.
+      group_by: [alertname]
+      group_wait: 30s
+      group_interval: 5m
+      # A problem that is still there is repeated twice a day.
+      repeat_interval: 12h
+    receivers:
+      - name: pushover
+        pushover_configs:
+          - user_key_file: /etc/alertmanager/pushover/user_key
+            token_file: /etc/alertmanager/pushover/app_token
+            send_resolved: true
+            title: '{{ if eq .Status "resolved" }}Resolved: {{ end }}{{ .CommonAnnotations.summary }}'
+            message: '{{ range .Alerts }}{{ .Annotations.description }}{{ "\n" }}{{ end }}'
+            # High priority (bypasses quiet hours) for critical alerts, normal for the rest.
+            priority: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "critical") }}1{{ else }}0{{ end }}'
+
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: bricklink
+        rules:
+          # BrickLink is refusing the API token (401 or 403). Every BrickLink job treats that as an
+          # outage and only logs a warning, so this alert is how the owner finds out. Each job
+          # tries again every few minutes; a single stray refusal leaves the 10-minute window before
+          # the 15 minutes are up and never fires.
+          - alert: BricklinkApiCredentialsRejected
+            expr: sum by (namespace) (increase(bricklink_api_credentials_rejected_total[10m])) > 0
+            for: 15m
+            labels:
+              severity: critical
+            annotations:
+              summary: BrickLink is refusing the API token
+              description: >-
+                {{ $labels.namespace }}: BrickLink has refused the API token for 15 minutes.
+                Most likely the home public IP changed. Register a token for the new address,
+                update bricklink-client-api-keys.yml in Infisical (Global), restart
+                lego-data-ingress and bricklink-web-gateway.
+                Runbook: lego-server-configuration/prometheus/README.md
+
+      - name: public-ip-watch
+        rules:
+          # The watch runs every 15 minutes and reports each completed run. No report for an hour
+          # means four runs in a row failed or did not start: a change of address would go unseen.
+          - alert: PublicIpWatchNotRunning
+            expr: >-
+              (time() - max(homelab_public_ip_watch_last_success_timestamp_seconds) > 3600)
+              or absent(homelab_public_ip_watch_last_success_timestamp_seconds)
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: The public IP watch is not running
+              description: >-
+                The public IP watch has not completed a run for over an hour, so a change of the
+                home public IP would not be reported. Check the CronJob monitoring/public-ip-watch.
+                Runbook: lego-server-configuration/prometheus/README.md
