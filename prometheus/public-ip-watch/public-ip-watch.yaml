@@ -1,0 +1,127 @@
+# Public IP watch (HOMELAB-6): a CronJob that tells the owner when the home's public IP address
+# changes. What it does and why is described at the top of public-ip-watch.sh; how to install and
+# test it is in ../README.md.
+#
+# Needs the Secret monitoring/alertmanager-pushover (../01-pushover-external-secret.yaml).
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: public-ip-watch
+  namespace: monitoring
+---
+# The last known address. The manifest has no data on purpose: the job fills it in, and applying
+# this file again leaves what the job stored alone.
+#   last_ip      the address seen by the last run that completed
+#   previous_ip  the address before the last change
+#   changed_at   when the last change was seen (epoch seconds; 0 until the first change)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: public-ip-watch-state
+  namespace: monitoring
+---
+# The job may update that one ConfigMap and nothing else.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: public-ip-watch
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["public-ip-watch-state"]
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: public-ip-watch
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: public-ip-watch
+subjects:
+  - kind: ServiceAccount
+    name: public-ip-watch
+    namespace: monitoring
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: public-ip-watch
+  namespace: monitoring
+spec:
+  schedule: "*/15 * * * *"
+  # A run that is still going when the next is due is left to finish; the next one is skipped.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # No retry inside a run: the next run, 15 minutes later, starts over.
+      backoffLimit: 0
+      activeDeadlineSeconds: 180
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          serviceAccountName: public-ip-watch
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: public-ip-watch
+              image: curlimages/curl:8.22.0
+              command: ["/bin/sh", "/script/public-ip-watch.sh"]
+              env:
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: STATE_CONFIGMAP
+                  value: public-ip-watch-state
+                - name: STATE_DIR
+                  value: /state
+                - name: PUSHGATEWAY_URL
+                  value: http://prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091
+                - name: PUSHOVER_APP_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-pushover
+                      key: app_token
+                - name: PUSHOVER_USER_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: alertmanager-pushover
+                      key: user_key
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  memory: 64Mi
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+                  readOnly: true
+                - name: state
+                  mountPath: /state
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: public-ip-watch-script
+            - name: state
+              configMap:
+                name: public-ip-watch-state
