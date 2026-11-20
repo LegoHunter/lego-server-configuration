@@ -1,3 +1,32 @@
+# Helm values of the release "grafana" (namespace monitoring, chart grafana-community/grafana
+# 10.5.15, Grafana 12.3.1). See ../README.md for install and upgrade.
+
+# The admin sign-in comes from the Secret monitoring/grafana-admin, which External Secrets fills
+# from Infisical (grafana-admin-external-secret.yaml). Grafana uses it only when it first creates
+# its database; see the note in that file.
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+# Grafana's database (users, passwords, dashboards made or imported in the UI, preferences) is kept
+# on a volume, so it survives a pod restart (HOMELAB-75). Before this it was in an emptyDir and
+# every restart wiped it.
+persistence:
+  enabled: true
+  type: pvc
+  # The class Prometheus uses: local LVM storage on the node, and the volume can be grown later.
+  # The volume lives on one node, so Grafana always starts on that node.
+  storageClassName: topolvm-provisioner
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+
+# One volume cannot be mounted by an old and a new pod at once, and two Grafana processes must not
+# share one database file. So an upgrade stops the old pod before it starts the new one.
+deploymentStrategy:
+  type: Recreate
+
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -12,30 +41,13 @@ datasources:
         access: proxy
         url: http://loki-gateway:3100
         isDefault: true
-
+        # Loki runs multi-tenant; this header names the tenant.
         jsonData:
           httpHeaderName1: X-Scope-OrgID
         secureJsonData:
           httpHeaderValue1: legohunter.io
 
+# No chart Ingress: Traefik routes https://console.grafana.internal.legohunter.io through the
+# IngressRoute in grafana-ingressroute.yaml.
 ingress:
-  enabled: true
-
-  ingressClassName: traefik
-
-  annotations: {}
-  # Do NOT set kubernetes.io/ingress.class unless you have a reason
-
-  hosts:
-    - console.grafana.internal.legohunter.io
-
-  path: /
-  pathType: Prefix
-
-  tls:
-    - secretName: grafana-tls
-      hosts:
-        - console.grafana.internal.legohunter.io
-
-adminUser: admin
-adminPassword: admin
+  enabled: false
