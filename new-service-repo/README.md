@@ -156,8 +156,10 @@ on:
       - synchronize
       - closed
 
+# Upper bound for the shared pipeline's jobs (each job narrows it further). contents:write is used
+# only by prod-release, which tags each PROD release and creates its GitHub Release (HOMELAB-127).
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -169,8 +171,10 @@ jobs:
       quay-username: ${{ vars.QUAY_USERNAME }}
       deploy-dev-enabled: ${{ vars.DEPLOY_DEV_ENABLED == 'true' }}
       deploy-prod-enabled: ${{ vars.DEPLOY_PROD_ENABLED == 'true' }}
+      jira-user-email: ${{ vars.JIRA_USER_EMAIL }}
     secrets:
       QUAY_TOKEN: ${{ secrets.QUAY_TOKEN }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 ```
 
 The pipeline itself is [../.github/workflows/k8s-service-pipeline.yml](../.github/workflows/k8s-service-pipeline.yml).
@@ -233,6 +237,49 @@ and run its `helm upgrade` ([../github-runner/README.md](../github-runner/README
 
 To trial a pipeline change, point one service's feature branch at the pipeline's feature branch
 (`...k8s-service-pipeline.yml@feature/<branch>`), and switch back to `@develop` before merging.
+
+### Releases (HOMELAB-127)
+
+Every successful PROD deploy ends with `prod-release`, which tags the `develop` -> `main` merge
+commit and creates a **GitHub Release** for it (the repository's *Releases* page). Nothing is
+committed to any branch: `prod-promote` refuses a `main` whose code differs from `develop`, so a
+`CHANGELOG.md` written to `main` would block the next release.
+
+- **Tag:** `vYYYY.MM.DD` (America/New_York date of the release), then `vYYYY.MM.DD.2`, `.3` for
+  more releases the same day. Title: `<service> <tag>`.
+- **Notes**, in this order:
+  1. *Tickets in this release*: every `HOMELAB-<n>` in the **subjects** of the commits since the
+     previous release tag, grouped by Jira work type, with summary and status. Commit bodies are
+     ignored, because they may name keys only as examples. Keys anywhere in the subject count, so
+     older subjects ending in `(HOMELAB-<n>)` are found too.
+  2. *Image*: `quay.io/tvattima/<service>:prod-<sha>`, its digest and the released `develop` commit.
+  3. GitHub's generated list of the pull requests merged since the previous release.
+- **Re-runs:** if the merge commit already has its tag and Release, the job does nothing.
+- **Jira never blocks a release:** with no token, a refused token or Jira unreachable, the Release
+  is created with the keys only and the run shows a warning.
+- **By hand:** [../.github/scripts/prod-release.sh](../.github/scripts/prod-release.sh) runs from a
+  full clone of the service (`REPO`, `APP`, `MAIN_SHA`, optional Jira variables); `DRY_RUN=true`
+  prints the tag and notes without creating anything.
+
+The service repositories are **public**, so Release pages, including the Jira summaries, are public.
+
+**Jira credentials** (organization level, shared by every service):
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `JIRA_USER_EMAIL` | Actions **variable** | the Atlassian account the token belongs to (Claude's Jira user) |
+| `JIRA_API_TOKEN` | Actions **secret** | an Atlassian API token **with scopes**, read-only: `read:jira-work` |
+
+A scoped token is called through `https://api.atlassian.com/ex/jira/<cloudId>/...`; the script
+looks the cloud id up from the site. Without these two, Releases are still created.
+
+**Autolinks:** each service repository links `HOMELAB-<n>` everywhere on GitHub (Release notes,
+commits, pull requests) to the Jira ticket. Repository admin, once per repository:
+
+```bash
+gh api -X POST repos/LegoHunter/<service>/autolinks -f key_prefix=HOMELAB- \
+  -f url_template='https://vattima.atlassian.net/browse/HOMELAB-<num>' -F is_alphanumeric=false
+```
 
 ### Containerfile
 
