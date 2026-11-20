@@ -35,6 +35,12 @@ name: Kubernetes service pipeline
 # Environment, or every release would need a second approval. prod-promote refuses to run if the
 # repo's `prod` Environment has no required reviewer (GitHub would otherwise create it unprotected).
 #
+# Releases (HOMELAB-127): after a successful PROD deploy, prod-release tags the main merge commit
+# vYYYY.MM.DD and creates its GitHub Release (Jira tickets from the commit subjects, the image, the
+# merged pull requests). It is the only job with contents:write; callers grant contents:write for
+# it, and every other job narrows its own permissions. Jira is read with the optional
+# JIRA_API_TOKEN secret and jira-user-email input; without them the Release has no ticket section.
+#
 # Docs-only changes (E9): a feature push or PR that only touches *.md, docs/** or LICENSE skips
 # the build, tests, image and deploy. Merges into develop/main are never skipped.
 # Concurrency (E4): each environment deploys one run at a time per service; the newest waits.
@@ -90,10 +96,18 @@ on:
         required: false
         type: boolean
         default: false
+      jira-user-email:
+        description: Atlassian account that JIRA_API_TOKEN belongs to (the JIRA_USER_EMAIL variable). Used only for the PROD Release notes.
+        required: false
+        type: string
+        default: ''
     secrets:
       QUAY_TOKEN:
         description: Password / token for quay-username.
         required: true
+      JIRA_API_TOKEN:
+        description: Read-only (scoped) Atlassian API token for the "Tickets in this release" section of PROD Releases. Optional; without it the Release has no ticket section.
+        required: false
 
 jobs:
   changes:
@@ -241,6 +255,9 @@ jobs:
     environment:
       name: sandbox
       url: ${{ steps.smoke.outputs.url }}
+    # Explicit, so the caller's contents:write (needed only by prod-release) does not reach this job.
+    permissions:
+      contents: read
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
@@ -391,6 +408,9 @@ jobs:
     environment:
       name: dev
       url: ${{ steps.smoke.outputs.url }}
+    # Explicit, so the caller's contents:write (needed only by prod-release) does not reach this job.
+    permissions:
+      contents: read
     runs-on: [arc-runner]
     steps:
       - uses: actions/checkout@v4
@@ -565,6 +585,9 @@ jobs:
     # rights there, and [arc-runner-prod] fails any job that is not a push to main of an
     # allowlisted service repo (github-runner/hooks/prod-job-guard.sh).
     runs-on: [arc-runner-prod]
+    # Explicit, so the caller's contents:write (needed only by prod-release) does not reach this job.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Deploy by digest
@@ -620,3 +643,45 @@ jobs:
           echo "::error title=Smoke check failed::$url did not report UP within 2 minutes (last HTTP $code). The rollout succeeded inside the cluster, so check DNS, the IngressRoute, the TLS certificate and the default-headers Middleware in services-$ENV_NAME."
           echo "**Smoke check FAILED:** $url (last HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
           exit 1
+
+  prod-release:
+    name: PROD release notes
+    # HOMELAB-127: after a successful PROD deploy and smoke check, tag the develop -> main merge
+    # commit vYYYY.MM.DD (.2, .3 for more releases that day) and create its GitHub Release: the Jira
+    # tickets named in the commit subjects since the previous release, the image PROD runs, then
+    # GitHub's generated list of merged pull requests. See ../scripts/prod-release.sh.
+    # Never on the PROD runner: it needs no cluster rights, only contents:write on the repository.
+    # Jira problems never fail this job (the Release is created without the ticket section and a
+    # warning shows); the deploy has already happened by the time it runs either way.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.deploy-prod-enabled
+    needs: [prod-promote, deploy-prod]
+    concurrency:
+      group: release-prod-${{ inputs.app }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the service (full history and tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check out the release script
+        # The same commit of this repository as the pipeline file the caller uses, so a pipeline
+        # trialled from a feature branch also runs that branch's script.
+        uses: actions/checkout@v4
+        with:
+          repository: LegoHunter/lego-server-configuration
+          ref: ${{ github.job_workflow_sha || 'develop' }}
+          path: .lcms-pipeline
+          sparse-checkout: .github/scripts
+      - name: Tag and create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          APP: ${{ inputs.app }}
+          MAIN_SHA: ${{ github.sha }}
+          IMAGE_DIGEST: ${{ needs.prod-promote.outputs.image-digest }}
+          JIRA_USER_EMAIL: ${{ inputs.jira-user-email }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: bash .lcms-pipeline/.github/scripts/prod-release.sh
