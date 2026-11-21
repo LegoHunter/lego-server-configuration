@@ -62,6 +62,98 @@ serverFiles:
                 lego-data-ingress and bricklink-web-gateway.
                 Runbook: lego-server-configuration/prometheus/README.md
 
+      # The BrickLink web gateway's website session (HOMELAB-102). Each environment's gateway holds
+      # its own signed-in session, so every rule is per namespace. The gateway probes the session
+      # hourly (its keep-alive) and on each session import, and its gauges show the latest result:
+      #   bricklink_gateway_session_state{state}            1 for the current state, 0 for the others
+      #   bricklink_gateway_session_layer_expiry_seconds{layer}  time until each session cookie expires
+      # What to do for each alert: bricklink-web-gateway/runbook.md, section 2 and section 5.
+      - name: bricklink-web-gateway
+        rules:
+          # The last probe ended on a sign-in page. Only a manual sign-in and session import fixes
+          # it, and the keep-alive pauses until then, so the alert stays until the import is done.
+          # A BrickLink outage gives UNKNOWN, never SIGNED_OUT, so this does not fire for an outage.
+          - alert: BricklinkGatewaySignedOut
+            expr: max by (namespace) (bricklink_gateway_session_state{state="SIGNED_OUT"}) == 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: The BrickLink web gateway is signed out
+              description: >-
+                {{ $labels.namespace }}: the BrickLink web gateway's session is signed out, so lot
+                writes through the gateway fail. Sign in on the PC and import the session
+                (scripts\refresh-session.ps1 -DoImport). Runbook: bricklink-web-gateway/runbook.md
+                section 5.
+
+          # Three hourly probes in a row could not tell whether the session is signed in: BrickLink
+          # is down or in maintenance, or the gateway's browser cannot start. Not a sign-out; do not
+          # sign in again for this. Silence it in Alertmanager during a known BrickLink outage.
+          - alert: BricklinkGatewaySessionUnknown
+            expr: max by (namespace) (bricklink_gateway_session_state{state="UNKNOWN"}) == 1
+            for: 3h
+            labels:
+              severity: warning
+            annotations:
+              summary: The BrickLink web gateway cannot check its session
+              description: >-
+                {{ $labels.namespace }}: for 3 hours the gateway's probes could not tell whether
+                the BrickLink session is signed in. Usually BrickLink is down or in maintenance; GET
+                /session shows where the last probe ended. Do not sign in again for this.
+                Runbook: bricklink-web-gateway/runbook.md section 2.
+
+          # The two BrickLink cookies expire 28 days after their last use, and every hourly probe
+          # pushes that date forward. Less than 25 days left while the probes say SIGNED_IN means
+          # three days without a renewal: the keep-alive is not doing its job. The SIGNED_IN
+          # condition leaves outages and sign-outs to the two alerts above.
+          - alert: BricklinkGatewaySessionNotRenewing
+            expr: >-
+              min by (namespace, layer) (
+                bricklink_gateway_session_layer_expiry_seconds{layer=~"BRICKLINK_TOKEN|BRICKLINK_PORTAL_SESSION"}
+              ) < 25 * 86400
+              and on (namespace)
+              max by (namespace) (bricklink_gateway_session_state{state="SIGNED_IN"}) == 1
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: The BrickLink web gateway's session is not renewing
+              description: >-
+                {{ $labels.namespace }}: the gateway is signed in, but its {{ $labels.layer }}
+                cookie has not been renewed for over 3 days and expires in
+                {{ $value | humanizeDuration }}. Check the keep-alive in the gateway's log and
+                force a probe (POST /session/probe). Runbook: bricklink-web-gateway/runbook.md
+                section 4.
+
+          # Any session cookie within a week of expiry, whatever the state. For the LEGO Account
+          # layer, which use does not renew (about three months after each sign-in), this is the
+          # week's notice to plan a manual sign-in. For the BrickLink layers it means a long outage
+          # or a stopped keep-alive is about to end the session.
+          - alert: BricklinkGatewaySessionExpiringSoon
+            expr: min by (namespace, layer) (bricklink_gateway_session_layer_expiry_seconds) < 7 * 86400
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: The BrickLink web gateway's session expires within a week
+              description: >-
+                {{ $labels.namespace }}: the gateway's {{ $labels.layer }} cookie expires in
+                {{ $value | humanizeDuration }}. Plan a manual sign-in and session import before
+                then. Runbook: bricklink-web-gateway/runbook.md section 5.
+
+          # Prometheus cannot read the gateway's metrics, so none of the alerts above can fire.
+          - alert: BricklinkGatewayMetricsDown
+            expr: max by (namespace) (up{service="bricklink-web-gateway"}) == 0
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: Prometheus cannot read the BrickLink web gateway's metrics
+              description: >-
+                {{ $labels.namespace }}: Prometheus has not been able to scrape the BrickLink web
+                gateway for 15 minutes, so its session alerts cannot fire. Check the pod and its
+                NetworkPolicy (the monitoring namespace must be allowed on port 8080).
+
       - name: public-ip-watch
         rules:
           # The watch runs every 15 minutes and reports each completed run. No report for an hour
