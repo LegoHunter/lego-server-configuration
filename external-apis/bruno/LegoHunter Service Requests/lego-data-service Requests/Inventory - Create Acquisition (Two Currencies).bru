@@ -1,0 +1,81 @@
+meta {
+  name: Inventory - Create Acquisition (Two Currencies)
+  type: http
+  seq: 42
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/inventory
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "transactionDate": "2026-07-28",
+    "fromPartyId": 1,
+    "toPartyId": 2,
+    "transactionPlatformName": "Private",
+    "notes": "Example two-currency purchase: price and PayPal fee in USD, shipping in the seller's CAD.",
+    "inventoryItems": [
+      {
+        "itemNumber": "6390-1",
+        "description": "Main Street",
+        "boxNumber": 12,
+        "newOrUsed": "U",
+        "completeness": "C",
+        "sealed": false,
+        "builtOnce": true,
+        "itemConditionCode": "VG",
+        "boxConditionCode": "G",
+        "instructionsConditionCode": "VG",
+        "transactionTypeCode": "P",
+        "costs": [
+          {
+            "costTypeCode": "PRICE",
+            "amount": 200.00,
+            "currencyCode": "USD",
+            "notes": "Agreed price."
+          }
+        ],
+        "forSale": false,
+        "quantity": 1,
+        "active": true
+      }
+    ],
+    "costs": [
+      {
+        "costTypeCode": "SHIPPING",
+        "amount": 34.02,
+        "currencyCode": "CAD",
+        "notes": "Shipping from Canada, 25.00 USD at 1.3606."
+      },
+      {
+        "costTypeCode": "FEE",
+        "amount": 4.99,
+        "currencyCode": "USD",
+        "notes": "PayPal fee."
+      }
+    ],
+    "payments": [
+      {
+        "paymentDate": "2026-07-28",
+        "currencyCode": "USD",
+        "sellerCurrencyCode": "CAD",
+        "exchangeRate": 1.3606,
+        "amount": 229.99,
+        "paymentPlatformName": "PayPal",
+        "paymentPlatformTransactionId": "PAYPAL-BRUNO-EXAMPLE-002"
+      }
+    ]
+  }
+}
+
+docs {
+  Two currencies (HOMELAB-130): USD plus the other party's currency, never a third.
+
+  - exchangeRate is required on every payment. It is the units of the other currency per 1 USD, as PayPal shows it
+    ("1 USD = 1.3606 CAD" is 1.3606), and every payment in the transaction uses the same one.
+  - With one currency, send exchangeRate 1.
+  - Payments must equal costs after converting to USD, within one cent per converted line.
+}
