@@ -27,11 +27,22 @@ To add an alert, add a rule to `prometheus-alerting-values.yaml` and run the Hel
 |---|---|---|
 | `BricklinkApiCredentialsRejected` | BrickLink has refused the API token (401 or 403) for 15 minutes | [The public IP changed](#the-public-ip-changed), or the token was revoked |
 | `PublicIpWatchNotRunning` | The public IP watch has not completed a run for over an hour | [The watch is not running](#the-watch-is-not-running) |
+| `BricklinkGatewaySignedOut` | A gateway's session has been `SIGNED_OUT` for 5 minutes | Sign in on the PC and import the session: gateway runbook, section 5 |
+| `BricklinkGatewaySessionUnknown` | A gateway could not check its session for 3 hours (BrickLink down or in maintenance, or the browser not starting) | Usually wait; do not sign in again. Silence it during a known BrickLink outage. Gateway runbook, section 2 |
+| `BricklinkGatewaySessionNotRenewing` | A gateway is signed in but its BrickLink cookies have not been renewed for over 3 days | Check the keep-alive: gateway runbook, section 4 |
+| `BricklinkGatewaySessionExpiringSoon` | A gateway session cookie expires within 7 days (the LEGO Account layer about three months after each sign-in) | Plan a manual sign-in: gateway runbook, section 5 |
+| `BricklinkGatewayMetricsDown` | Prometheus has not been able to read a gateway's metrics for 15 minutes | Check the pod and its NetworkPolicy |
 
 `BricklinkApiCredentialsRejected` reads the counter
 `bricklink_api_credentials_rejected_total{source}`, which lego-data-ingress exports for each of its
 BrickLink jobs and bricklink-web-gateway for its stockroom check. Those jobs treat a refused token
 as an outage and only log a warning, so this alert is how the owner finds out.
+
+The `BricklinkGateway…` alerts (HOMELAB-102) read the gauges each environment's
+bricklink-web-gateway exports about its signed-in website session:
+`bricklink_gateway_session_state{state}` and `bricklink_gateway_session_layer_expiry_seconds{layer}`.
+They are per namespace, because each environment's gateway has its own sign-in. The gateway's
+runbook (`bricklink-web-gateway/runbook.md`) says what each session state means and how to sign in.
 
 ## The public IP watch
 
@@ -155,6 +166,13 @@ a few minutes after `endsAt`.
 **The rules.** The Prometheus Alerts page lists `BricklinkApiCredentialsRejected` and
 `PublicIpWatchNotRunning` as inactive. The first one fires for real only when BrickLink refuses the
 token; do not break the token to test it.
+
+**The gateway session alerts.** Sign out the SANDBOX gateway by importing a session that is not
+signed in, and then import the real one again. The steps are in the gateway runbook, section 11
+("Testing the sign-out alert"). Expect `BricklinkGatewaySignedOut` within about 7 minutes of the
+first import, and "Resolved" a few minutes after the second. BrickLink must be up: during
+maintenance the probe gives `UNKNOWN`, and `BricklinkGatewaySessionUnknown` fires after 3 hours
+instead.
 
 ## Base values
 
