@@ -21,7 +21,7 @@ body:json {
     "files": [
       {
         "name": "test-photo.jpg",
-        "size": 210,
+        "size": 224,
         "contentType": "image/jpeg"
       }
     ]
@@ -36,5 +36,5 @@ docs {
   Presigns one upload URL for test-photo.jpg in SANDBOX. It uses the access token from request 01, which
   is kept as a runtime variable and never saved to a file. Expect 200 with uploads[0].url, which is
   stored as uploadUrl for request 04. 401 means the access token is missing or expired: run 01 again.
-  The 'size' must match test-photo.jpg (210 bytes).
+  The 'size' must match test-photo.jpg (224 bytes).
 }
