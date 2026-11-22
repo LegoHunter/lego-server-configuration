@@ -1,0 +1,27 @@
+meta {
+  name: 02 revoke tokens
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{photoUploadIngressBase}}/internal/photo-upload/admin/tokens/revoke
+  body: json
+  auth: none
+}
+
+headers {
+  X-Admin-Key: {{photoUploadAdminKey}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tokenName": "owner-laptop"
+  }
+}
+
+docs {
+  Revokes every live token issued to the named publisher in this environment. The plugin's next refresh then fails,
+  and it needs a new token from request 01. The response's revokedRows is the number of tokens revoked (0 when none).
+}
