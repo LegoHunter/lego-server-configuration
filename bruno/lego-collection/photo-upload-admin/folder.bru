@@ -1,0 +1,9 @@
+meta {
+  name: photo-upload-admin
+}
+
+docs {
+  Administers the Lightroom publisher's tokens (HOMELAB-139). Select a Bruno environment named sandbox, dev or prod
+  first: each holds photoUploadIngressBase and photoUploadAdminKey. The admin key is a secret variable: keep it in
+  Bruno's secret store, never in this file. See lego-data-ingress/runbook.md, "Administer Lightroom publisher tokens".
+}
