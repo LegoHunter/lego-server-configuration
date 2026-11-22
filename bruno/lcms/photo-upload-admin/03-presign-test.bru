@@ -1,0 +1,40 @@
+meta {
+  name: 03 presign test
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{photoUploadIngressBase}}/internal/photo-upload/presign
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "environment": "sandbox",
+    "files": [
+      {
+        "name": "test-photo.jpg",
+        "size": 224,
+        "contentType": "image/jpeg"
+      }
+    ]
+  }
+}
+
+script:post-response {
+  bru.setVar("uploadUrl", res.body.uploads[0].url);
+}
+
+docs {
+  Presigns one upload URL for test-photo.jpg in SANDBOX. It uses the access token from request 01, which
+  is kept as a runtime variable and never saved to a file. Expect 200 with uploads[0].url, which is
+  stored as uploadUrl for request 04. 401 means the access token is missing or expired: run 01 again.
+  The 'size' must match test-photo.jpg (224 bytes).
+}

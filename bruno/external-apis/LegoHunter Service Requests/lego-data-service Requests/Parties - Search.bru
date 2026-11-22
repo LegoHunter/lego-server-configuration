@@ -1,0 +1,28 @@
+meta {
+  name: Parties - Search
+  type: http
+  seq: 38
+}
+
+get {
+  url: {{lego_data_service_base_url}}/api/v1/parties?name=Reza
+  body: none
+  auth: none
+}
+
+params:query {
+  name: Reza
+  ~email: ann@example.com
+  ~transactionPlatformName: Bricklink
+  ~externalPartyId: annbricks
+  ~limit: 50
+}
+
+docs {
+  Finds parties (sellers, buyers, the owner) by any mix of the filters. Turn on the ones you need.
+  
+  - name: part of the first and last name, ignoring case.
+  - email: part of the email, ignoring case.
+  - transactionPlatformName + externalPartyId: the party's user name on a platform (Bricklink, eBay, ...).
+  - limit: 1 to 200, default 50. With no filter, the first parties by id are returned.
+}

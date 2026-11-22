@@ -1,0 +1,31 @@
+meta {
+  name: 01 issue token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{photoUploadIngressBase}}/internal/photo-upload/admin/tokens
+  body: json
+  auth: none
+}
+
+headers {
+  X-Admin-Key: {{photoUploadAdminKey}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tokenName": "owner-laptop"
+  }
+}
+
+script:post-response {
+  bru.setVar("accessToken", res.body.accessToken);
+}
+
+docs {
+  Issues a new login for the named publisher. The response holds accessToken and refreshToken: copy refreshToken into
+  the Lightroom Export dialog's token field (or Plug-in Manager). It is shown once; a second issue makes a new login.
+}

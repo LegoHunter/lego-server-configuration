@@ -1,0 +1,40 @@
+meta {
+  name: Parties - Create
+  type: http
+  seq: 40
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/parties
+  body: json
+  auth: none
+}
+
+params:query {
+  ~allowDuplicateName: true
+}
+
+body:json {
+  {
+    "partyType": "P",
+    "partyFirstName": "Reza",
+    "partyLastName": "Sezar",
+    "partyEmail": "sezarstrains@hotmail.com",
+    "partyAddress1": "2929 4TH AVE W",
+    "partyAddress2": "Apt #312 (Buzz 2041)",
+    "partyCity": "Vancouver",
+    "partyState": "BC",
+    "party_postal_code": "V6K 4T3",
+    "partyCountry": "CANADA"
+  }
+}
+
+docs {
+  Adds a party and answers 201 with it. Use the returned partyId as fromPartyId on item intake.
+  
+  - partyType: P (person) or C (company). A company's name goes in partyFirstName.
+  - Only partyType and a first or last name are required.
+  - 409 with code DUPLICATE_PARTY: an existing party has the same email, external identity or name.
+    Each error names the matching party id. Only a name match can be overridden: turn on
+    allowDuplicateName.
+}

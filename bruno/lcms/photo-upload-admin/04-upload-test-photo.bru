@@ -1,0 +1,25 @@
+meta {
+  name: 04 upload test photo
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{uploadUrl}}
+  body: file
+  auth: none
+}
+
+headers {
+  Content-Type: image/jpeg
+}
+
+body:file {
+  file: @file(test-photo.jpg) @contentType(image/jpeg)
+}
+
+docs {
+  PUTs test-photo.jpg to the URL that request 03 returned. The URL carries its own signature, so no
+  token is sent. Expect 200 (or an empty 2xx). 403 means the URL has expired: run 03 again.
+  Afterwards, check that ingest accepted the file: it should move out of the upload prefix into photos/.
+}
