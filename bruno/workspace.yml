@@ -1,0 +1,8 @@
+opencollection: 1.0.0
+info:
+  name: "LegoHunter Workspace"
+  type: workspace
+
+collections:
+  - name: "lego-collection"
+    path: "."
