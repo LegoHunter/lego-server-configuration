@@ -1,0 +1,57 @@
+meta {
+  name: Inventory - Create Acquisition
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{lego_data_service_base_url}}/api/v1/inventory
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "transactionDate": "2025-02-19",
+    "fromPartyId": 217,
+    "toPartyId": 1,
+    "transactionPlatformName": "Private",
+    "notes": "Bought from a seller in Canada. PayPal: 987.27 USD = 1,343.29 CAD at 1 USD = 1.3606 CAD.",
+    "inventoryItems": [
+      {
+        "itemNumber": "138-1",
+        "description": "Lego Electronic Train",
+        "boxNumber": 999,
+        "newOrUsed": "U",
+        "completeness": "C",
+        "sealed": false,
+        "builtOnce": true,
+        "itemConditionCode": "VG",
+        "boxConditionCode": "G",
+        "instructionsConditionCode": "VG",
+        "transactionTypeCode": "P",
+        "costs": [
+          { "costTypeCode": "PRICE", "amount": 900.00, "currencyCode": "USD", "notes": "Agreed price." }
+        ],
+        "forSale": false,
+        "quantity": 1,
+        "active": true
+      }
+    ],
+    "costs": [
+      { "costTypeCode": "SHIPPING", "amount": 111.95, "currencyCode": "CAD", "notes": "Shipping from Canada." },
+      { "costTypeCode": "FEE", "amount": 4.99, "currencyCode": "USD", "notes": "PayPal fee." }
+    ],
+    "payments": [
+      {
+        "paymentDate": "2025-02-19",
+        "currencyCode": "USD",
+        "sellerCurrencyCode": "CAD",
+        "exchangeRate": 1.3606,
+        "amount": 987.27,
+        "paymentPlatformName": "PayPal",
+        "paymentPlatformTransactionId": "4W644946NS7377409"
+      }
+    ]
+  }
+}
