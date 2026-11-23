@@ -17,12 +17,14 @@ headers {
 
 body:json {
   {
-    "tokenName": "owner-laptop"
+    "tokenName": "{{tokenName}}"
   }
 }
 
 script:post-response {
-  bru.setVar("accessToken", res.body.accessToken);
+  if (res.status === 200) {
+    bru.setVar("accessToken", res.body.accessToken);
+  }
 }
 
 docs {
