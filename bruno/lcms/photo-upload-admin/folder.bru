@@ -2,8 +2,12 @@ meta {
   name: photo-upload-admin
 }
 
+vars:pre-request {
+  tokenName: owner-laptop
+}
+
 docs {
   Administers the Lightroom publisher's tokens (HOMELAB-139). Select a Bruno environment named sandbox, dev or prod
   first: each holds photoUploadIngressBase and photoUploadAdminKey. The admin key is a secret variable: keep it in
-  Bruno's secret store, never in this file. See lego-data-ingress/runbook.md, "Administer Lightroom publisher tokens".
+  Bruno's secret store, never in this file. Set tokenName once here: requests 01 and 02 use it. See lego-data-ingress/runbook.md, "Administer Lightroom publisher tokens".
 }
