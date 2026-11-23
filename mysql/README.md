@@ -1,5 +1,7 @@
 # MySQL
 
+**Backup:** a nightly dump of every application schema, kept off rasppi5-01. See [`backup/README.md`](backup/README.md) for what is backed up, how to restore, and the runbook.
+
 ### Installation
 
 sudo apt update

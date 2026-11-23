@@ -1,0 +1,114 @@
+# Restore test (HOMELAB-125): proves the stored dumps can be loaded. Run by hand; see
+# kustomization.yaml for the commands and the top of restore-and-compare.sh for what it checks.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-restore-test
+  namespace: mysql-backup
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600
+  # The finished Job and its log are kept for a week.
+  ttlSecondsAfterFinished: 604800
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: fetch
+          image: curlimages/curl:8.22.0
+          command: ["/bin/sh", "/scripts/fetch.sh"]
+          envFrom:
+            - configMapRef:
+                name: mysql-backup-settings
+          env:
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-backup-s3
+                  key: accessKey
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-backup-s3
+                  key: secretKey
+          securityContext:
+            runAsUser: 100
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: dumps
+              mountPath: /dumps
+      containers:
+        - name: restore
+          image: mysql:8.4.13
+          command: ["/bin/bash", "/scripts/restore-and-compare.sh"]
+          envFrom:
+            - configMapRef:
+                name: mysql-backup-settings
+          env:
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-backup-db
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-backup-db
+                  key: password
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: dumps
+              mountPath: /dumps
+              readOnly: true
+            - name: restore
+              mountPath: /restore
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: mysql-restore-test-scripts
+        - name: dumps
+          emptyDir:
+            sizeLimit: 10Gi
+        # The throwaway server's data. Gone when the pod ends.
+        - name: restore
+          emptyDir:
+            sizeLimit: 20Gi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi

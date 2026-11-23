@@ -154,6 +154,40 @@ serverFiles:
                 gateway for 15 minutes, so its session alerts cannot fire. Check the pod and its
                 NetworkPolicy (the monitoring namespace must be allowed on port 8080).
 
+      - name: mysql-backup
+        rules:
+          # The nightly dump (CronJob mysql-backup/mysql-backup, 03:00 Eastern) reports each schema
+          # it stored. A schema whose last success is more than 26 hours old missed a night.
+          - alert: MysqlBackupMissing
+            expr: time() - mysql_backup_last_success_timestamp_seconds > 26 * 3600
+            for: 10m
+            labels:
+              severity: critical
+            annotations:
+              summary: A MySQL backup is missing
+              description: >-
+                Schema {{ $labels.schema }} has no stored dump from the last night.
+                Check the CronJob mysql-backup/mysql-backup.
+                Runbook: lego-server-configuration/mysql/backup/README.md
+
+          # Catches what the rule above cannot see: a schema that has never reported, or every
+          # schema after the Pushgateway restarted and lost its values. Fewer than the five
+          # backed-up schemas reporting for more than a day means a night went by without them.
+          # Change the 5 when a schema is added to or removed from the backup.
+          - alert: MysqlBackupNotReporting
+            expr: >-
+              (count(mysql_backup_last_success_timestamp_seconds) < 5)
+              or absent(mysql_backup_last_success_timestamp_seconds)
+            for: 26h
+            labels:
+              severity: critical
+            annotations:
+              summary: MySQL backups are not reporting
+              description: >-
+                Fewer than 5 schemas have reported a stored dump for over a day.
+                Check the CronJob mysql-backup/mysql-backup.
+                Runbook: lego-server-configuration/mysql/backup/README.md
+
       - name: public-ip-watch
         rules:
           # The watch runs every 15 minutes and reports each completed run. No report for an hour

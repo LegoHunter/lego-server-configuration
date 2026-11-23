@@ -1,0 +1,126 @@
+# Nightly MySQL backup (HOMELAB-125): dumps every application schema on rasppi5-01 and stores the
+# dumps in the PROD object store, off that host. What each step does is at the top of dump.sh and
+# upload.sh; install, restore and runbook are in ../README.md.
+#
+# Needs the Secrets mysql-backup-db and mysql-backup-s3 (../02-external-secrets.yaml).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mysql-backup
+  namespace: mysql-backup
+spec:
+  schedule: "0 3 * * *"
+  timeZone: America/New_York
+  # A run still going when the next is due is left to finish; the next one is skipped.
+  concurrencyPolicy: Forbid
+  # If the cluster was down at 03:00, the run is still started up to six hours late.
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      # No retry inside a night: a failed run is reported and the next night starts over.
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          # Nothing here uses the Kubernetes API.
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            # Step 1: dump. The client is the same release line as the server (8.4).
+            - name: dump
+              image: mysql:8.4.13
+              command: ["/bin/bash", "/scripts/dump.sh"]
+              envFrom:
+                - configMapRef:
+                    name: mysql-backup-settings
+              env:
+                - name: MYSQL_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-backup-db
+                      key: username
+                - name: MYSQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-backup-db
+                      key: password
+              securityContext:
+                runAsUser: 999
+                runAsGroup: 999
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+                - name: dumps
+                  mountPath: /dumps
+                - name: tmp
+                  mountPath: /tmp
+          containers:
+            # Step 2: upload and report.
+            - name: upload
+              image: curlimages/curl:8.22.0
+              command: ["/bin/sh", "/scripts/upload.sh"]
+              envFrom:
+                - configMapRef:
+                    name: mysql-backup-settings
+              env:
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-backup-s3
+                      key: accessKey
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-backup-s3
+                      key: secretKey
+              securityContext:
+                runAsUser: 100
+                runAsGroup: 999
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+                - name: dumps
+                  mountPath: /dumps
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: mysql-backup-scripts
+            # The dumps pass from step 1 to step 2 here and are gone when the pod ends.
+            - name: dumps
+              emptyDir:
+                sizeLimit: 10Gi
+            # Holds the MySQL client option file with the password: memory only, never on disk.
+            - name: tmp
+              emptyDir:
+                medium: Memory
+                sizeLimit: 16Mi

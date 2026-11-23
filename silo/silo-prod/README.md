@@ -17,6 +17,7 @@ SANDBOX and DEV use `../silo-dev/` (HOMELAB-54), which replaced minio-dev.
 | Console | https://console.silo.prod.internal.legohunter.io |
 | Buckets | `lego-uploads-prod` (everything that comes in: `photos/`, `bricklink/…`, `rebrickable/…`) and `lego-photos-prod` (the final scaled photos), the same layout as SANDBOX's `lego-uploads-sandbox` / `lego-photos-sandbox` |
 | Users | root (from Infisical) and `lcms-ingress` (policy `lcms-ingress-prod`: objects in the two buckets only) |
+| MySQL backups | Bucket `mysql-backups` and user `lcms-mysql-backup` (policy `lcms-mysql-backup`: add and read objects in that bucket, no delete), for the nightly MySQL dumps (HOMELAB-125). The bucket's expiry rules and everything else about the backup: `../../mysql/backup/README.md` |
 | Events | `lego-uploads-prod` puts and `lego-photos-prod` deletes → redpanda-prod `prod-s3-events`, as `prodproducer` |
 | Chart | `helm/silo` from github.com/pgsty/silo at tag `RELEASE.2026-10-26T00-00-00Z` (chart 7.0.3); images pinned to the same release |
 

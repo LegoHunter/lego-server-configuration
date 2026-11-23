@@ -116,6 +116,12 @@ buckets:
     policy: none
     purge: false
     versioning: false
+  # The nightly MySQL dumps (HOMELAB-125): daily/, weekly/ and latest/. Its expiry rules are set by
+  # ../../mysql/backup/03-bucket-expiry-job.yaml, because the chart has no setting for them.
+  - name: mysql-backups
+    policy: none
+    purge: false
+    versioning: false
 
 # Least-privilege policy for lego-data-ingress: objects in the two PROD buckets, nothing else.
 policies:
@@ -139,12 +145,33 @@ policies:
           - "s3:GetBucketLocation"
           - "s3:ListBucket"
           - "s3:ListBucketMultipartUploads"
+  # The MySQL backup job (HOMELAB-125): add and read dumps in its own bucket, nothing else. No
+  # delete: old dumps are removed only by the bucket's expiry rules, so a fault in the job cannot
+  # remove a backup. (It can still overwrite a key; the nightly keys carry the time, so it does not.)
+  - name: lcms-mysql-backup
+    statements:
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::mysql-backups/*"
+        actions:
+          - "s3:GetObject"
+          - "s3:PutObject"
+      - effect: Allow
+        resources:
+          - "arn:aws:s3:::mysql-backups"
+        actions:
+          - "s3:GetBucketLocation"
+          - "s3:ListBucket"
 
 users:
   - accessKey: lcms-ingress
     existingSecret: silo-prod-ingress-user
     existingSecretKey: secretKey
     policy: lcms-ingress-prod
+  - accessKey: lcms-mysql-backup
+    existingSecret: silo-prod-mysql-backup-user
+    existingSecretKey: secretKey
+    policy: lcms-mysql-backup
 
 # Bucket event rules, which the chart has no setting for. --ignore-existing makes re-runs safe.
 # Uploads bucket: puts. Every new file is routed by key prefix (photos/, bricklink/, rebrickable/).

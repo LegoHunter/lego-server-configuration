@@ -1,0 +1,28 @@
+# kubectl apply -k mysql/backup/job
+# The two scripts become the ConfigMap mysql-backup-scripts, and the settings below the ConfigMap
+# mysql-backup-settings. Every run starts a new pod, so a change is picked up by the next run after
+# an apply. The restore test (../restore-test) reads the same settings.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mysql-backup
+resources:
+  - mysql-backup.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: mysql-backup-scripts
+    files:
+      - dump.sh
+      - upload.sh
+  - name: mysql-backup-settings
+    literals:
+      - MYSQL_HOST=rasppi5-01.internal.legohunter.io
+      - MYSQL_PORT=3306
+      # Every application schema. marketplace_pricing_scratch is for trial builds and is left out.
+      # A schema added here must also be granted to lcms_backup (../setup-mysql-backup-account.sh)
+      # and counted in the alert MysqlBackupMissing (../../../prometheus/prometheus-alerting-values.yaml).
+      - SCHEMAS=lego_prod_legacy lego_prod lego_sandbox lego_dev marketplace_pricing
+      - S3_ENDPOINT=http://silo-prod.silo-prod.svc.cluster.local:9000
+      - S3_BUCKET=mysql-backups
+      - S3_REGION=us-east-1
+      - PUSHGATEWAY_URL=http://prometheus-prometheus-pushgateway.monitoring.svc.cluster.local:9091

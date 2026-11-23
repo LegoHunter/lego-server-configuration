@@ -32,6 +32,8 @@ To add an alert, add a rule to `prometheus-alerting-values.yaml` and run the Hel
 | `BricklinkGatewaySessionNotRenewing` | A gateway is signed in but its BrickLink cookies have not been renewed for over 3 days | Check the keep-alive: gateway runbook, section 4 |
 | `BricklinkGatewaySessionExpiringSoon` | A gateway session cookie expires within 7 days (the LEGO Account layer about three months after each sign-in) | Plan a manual sign-in: gateway runbook, section 5 |
 | `BricklinkGatewayMetricsDown` | Prometheus has not been able to read a gateway's metrics for 15 minutes | Check the pod and its NetworkPolicy |
+| `MysqlBackupMissing` | A schema's last stored dump is more than 26 hours old | `../mysql/backup/README.md`, "A backup is missing" |
+| `MysqlBackupNotReporting` | Fewer than 5 schemas have reported a stored dump for over a day (also after the Pushgateway lost its values and a night passed) | `../mysql/backup/README.md`, "A backup is missing" |
 
 `BricklinkApiCredentialsRejected` reads the counter
 `bricklink_api_credentials_rejected_total{source}`, which lego-data-ingress exports for each of its
