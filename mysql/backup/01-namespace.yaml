@@ -1,0 +1,5 @@
+# Namespace of the nightly MySQL backup job and its restore test (HOMELAB-125).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mysql-backup

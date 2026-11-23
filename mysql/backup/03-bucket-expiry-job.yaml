@@ -1,0 +1,58 @@
+# Expiry rules of the bucket mysql-backups (HOMELAB-125). Run once, and again whenever the
+# retention changes:
+#   kubectl delete job mysql-backups-expiry -n silo-prod --ignore-not-found
+#   kubectl apply -f mysql/backup/03-bucket-expiry-job.yaml
+#   kubectl logs -n silo-prod job/mysql-backups-expiry
+#
+# The object store deletes old dumps itself; the backup job's user cannot delete.
+#   daily/    expires 14 days after it was stored
+#   weekly/   expires 56 days (8 weeks) after it was stored
+#   latest/   never expires; it is overwritten every night
+#
+# It removes every existing rule of the bucket first and then adds these, so running it again
+# gives the same result. It runs in silo-prod as the store's root user, because only an
+# administrator may set a bucket's rules; the silo chart has no setting for them.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-backups-expiry
+  namespace: silo-prod
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 604800
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: mc
+          image: pgsty/mc:RELEASE.2026-10-26T00-00-00Z
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              export MC_CONFIG_DIR=/tmp/mc
+              mc alias set mysilo http://silo-prod.silo-prod.svc.cluster.local:9000 "$ROOT_USER" "$ROOT_PASSWORD" > /dev/null
+              mc ilm rule rm --all --force mysilo/mysql-backups || true
+              mc ilm rule add --prefix "daily/" --expire-days 14 mysilo/mysql-backups
+              mc ilm rule add --prefix "weekly/" --expire-days 56 mysilo/mysql-backups
+              mc ilm rule ls mysilo/mysql-backups
+          env:
+            - name: ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: silo-prod-root
+                  key: rootUser
+            - name: ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: silo-prod-root
+                  key: rootPassword
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
