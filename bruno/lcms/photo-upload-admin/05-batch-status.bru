@@ -1,0 +1,22 @@
+meta {
+  name: 05 batch status
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{photoUploadIngressBase}}/internal/photo-upload/batches/{{batchId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+docs {
+  Reports the state of each file in the batch that request 03 presigned (HOMELAB-135). Run it after 04.
+  Expect 200 with "complete" and a "files" list. A file is "accepted" when ingest filed it, "rejected" with
+  the reason from ingest, "duplicate", or "pending" while ingest is still deciding. A file still pending after
+  15 minutes is "failed". 404 means the batch is unknown; run 03 first.
+}
