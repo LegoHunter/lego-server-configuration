@@ -41,14 +41,11 @@ exit;
 
 sudo reboot
 
-### Setting up lego_dev database and legomgr account
+### Accounts
 
-sudo mysql -u root
-create database lego_dev;
-CREATE USER 'legomgr'@'%' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON lego_dev.* TO 'legomgr'@'%' WITH GRANT OPTION;
-FLUSH PRIVILEGES;
-exit;
+Accounts and their rights are set up by the scripts in [accounts/](accounts/README.md)
+(HOMELAB-126). Do not create accounts by hand, and never grant an account rights on `*.*`.
+`legomgr` is for the legacy command-line tools and reaches `lego_prod_legacy` only.
 
 ### Common mysql commandline commands
 

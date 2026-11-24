@@ -1,7 +1,8 @@
 # MySQL accounts: analysis and target model (HOMELAB-126)
 
-Written 2026-11-24. This is an analysis. Nothing has been changed on the MySQL server, in Infisical
-or in the cluster.
+Written 2026-11-24, before any change. The owner decided the same day; see
+[Decisions taken](#decisions-taken). What was built from it, and the rollout as it is carried out,
+is in [README.md](README.md). Where the two differ, the README is current.
 
 ## The owner's goals
 
@@ -36,7 +37,25 @@ or in the cluster.
   accounts, switch one environment at a time, watch that `legomgr` has no connections left from
   the cluster, and only then narrow it.
 
-Six decisions are needed from the owner; see [Decisions](#decisions).
+Six decisions were needed from the owner; see [Decisions](#decisions).
+
+## Decisions taken
+
+The owner, 2026-11-24:
+
+1. **Deployers:** three new accounts, one per schema.
+2. **Crawler:** its own connection now, as `lcms_pricing_crawler`, as part of this ticket. The
+   environment accounts therefore get no crawler rights. Built in `lego-data` (the second
+   connection) and `lego-data-ingress` (the crawler uses it).
+3. **Runs from IntelliJ:** the SANDBOX key on the PC names `lcms_sandbox_app`. The deployer gets
+   its own key names for `sandbox` and `dev`.
+4. **`tvattima`'s host:** narrowed to `10.0.%`.
+5. **`legomgr`'s host:** left as it is.
+6. **`codex_sandbox_ro`:** dropped as part of this ticket.
+
+Correction to the text below: `lcms_prod_app` already had `SELECT` on `marketplace_pricing` and
+the writes on `want_list_item` (from `setup-lego-prod.sh`). It lacked only `INSERT` on
+`canonical_item`.
 
 ## What was checked, and what could not be
 
