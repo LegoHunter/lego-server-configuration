@@ -18,6 +18,8 @@
 # Environment: MYSQL_HOST, MYSQL_PORT, SCHEMAS from the ConfigMap mysql-backup-settings;
 # MYSQL_USER, MYSQL_PASSWORD from the Secret mysql-backup-db.
 set -uo pipefail
+# One byte order for sort, comm and join.
+export LC_ALL=C
 
 DATADIR=/restore/data
 SOCKET=/tmp/mysql.sock
@@ -32,7 +34,9 @@ user=${MYSQL_USER}
 password="${MYSQL_PASSWORD}"
 CNF
 
-restored() { mysql --protocol=socket --socket="$SOCKET" -uroot -N -B "$@"; }
+# --host=localhost: the pod has MYSQL_HOST set (the live server), which the client would otherwise
+# use as its default host and refuse the socket connection.
+restored() { mysql --protocol=socket --host=localhost --socket="$SOCKET" -uroot -N -B "$@"; }
 live()     { mysql --defaults-extra-file="$CLIENT_CNF" -N -B "$@"; }
 
 echo "restore_test.starting_throwaway_server"
@@ -42,11 +46,11 @@ fi
 mysqld --datadir="$DATADIR" --socket="$SOCKET" --pid-file=/tmp/mysqld.pid --skip-networking \
     --mysqlx=OFF --skip-log-bin --innodb-buffer-pool-size=256M --log-error=/tmp/mysqld.log &
 for _ in $(seq 1 60); do
-    restored -e "SELECT 1" > /dev/null 2>&1 && break
+    restored -e "SELECT 1" > /tmp/connect.err 2>&1 && break
     sleep 2
 done
 if ! restored -e "SELECT 1" > /dev/null 2>&1; then
-    echo "restore_test.server_failed step=start"; tail -n 20 /tmp/mysqld.log; exit 1
+    echo "restore_test.server_failed step=start"; cat /tmp/connect.err; tail -n 20 /tmp/mysqld.log; exit 1
 fi
 
 # Prints "<table> <rows>" for every base table of a schema, sorted by table name.
@@ -71,7 +75,7 @@ for schema in $SCHEMAS; do
     echo "dump taken at: $(zcat "$dump" | grep -m 1 'CHANGE REPLICATION SOURCE TO' | sed 's/^-- //')"
 
     restored -e "CREATE DATABASE \`$schema\`"
-    if ! zcat "$dump" | mysql --protocol=socket --socket="$SOCKET" -uroot "$schema" 2> "/tmp/$schema.load.err"; then
+    if ! zcat "$dump" | mysql --protocol=socket --host=localhost --socket="$SOCKET" -uroot "$schema" 2> "/tmp/$schema.load.err"; then
         echo "restore_test.load_failed schema=$schema message=$(tr '\n' ' ' < "/tmp/$schema.load.err" | cut -c1-500)"
         failed=1
         continue
@@ -86,9 +90,18 @@ for schema in $SCHEMAS; do
     echo "tables: live $live_tables, restored $restored_tables"
     echo "rows:   live $live_rows, restored $restored_rows"
 
-    if [ "$live_tables" -eq 0 ] || ! diff <(cut -f1 "/tmp/$schema.live") <(cut -f1 "/tmp/$schema.restored") > "/tmp/$schema.tables.diff"; then
-        echo "restore_test.tables_differ schema=$schema (< live only, > restored only)"
-        cat "/tmp/$schema.tables.diff" 2>/dev/null
+    # The mysql image has no diff. comm -3 prints the names that are on one side only: live-only
+    # names in the first column, restored-only names indented in the second.
+    cut -f1 "/tmp/$schema.live" > "/tmp/$schema.live.names"
+    cut -f1 "/tmp/$schema.restored" > "/tmp/$schema.restored.names"
+    if ! comm -3 "/tmp/$schema.live.names" "/tmp/$schema.restored.names" > "/tmp/$schema.tables.diff"; then
+        echo "restore_test.compare_failed schema=$schema"
+        failed=1
+        continue
+    fi
+    if [ "$live_tables" -eq 0 ] || [ -s "/tmp/$schema.tables.diff" ]; then
+        echo "restore_test.tables_differ schema=$schema (left: live only, indented: restored only)"
+        cat "/tmp/$schema.tables.diff"
         failed=1
         continue
     fi
@@ -103,7 +116,7 @@ for schema in $SCHEMAS; do
     echo "restore_test.restored schema=$schema"
 done
 
-mysqladmin --protocol=socket --socket="$SOCKET" -uroot shutdown > /dev/null 2>&1
+mysqladmin --protocol=socket --host=localhost --socket="$SOCKET" -uroot shutdown > /dev/null 2>&1
 echo
 if [ "$failed" = "0" ]; then
     echo "restore_test.passed"
