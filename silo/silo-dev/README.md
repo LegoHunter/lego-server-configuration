@@ -12,7 +12,7 @@ operator are archived upstream. It follows the silo-prod pattern (`../silo-prod/
 | S3 external | `https://api.silo.dev.internal.legohunter.io` |
 | Console | https://console.silo.dev.internal.legohunter.io |
 | Buckets | `lego-uploads-sandbox`, `lego-photos-sandbox`, `lego-uploads-dev`, `lego-photos-dev` (the same layout as silo-prod) |
-| Users | root (Infisical Development `silo-dev-root`); `lcms-ingress-sandbox` (Infisical Sandbox, SANDBOX buckets only); `lcms-ingress-dev` (Infisical Development, DEV buckets only) |
+| Users | root (Infisical Development `silo-dev-root`); `lcms-ingress-sandbox` (Infisical Sandbox, SANDBOX buckets only); `lcms-ingress-dev` (Infisical Development, DEV buckets only); `silo-dev-claude-ro` (Infisical Development `silo-dev-claude-readonly`, list and read only on all four buckets, HOMELAB-181) |
 | Events | target `SANDBOX` → redpanda-dev `sandbox-s3-events`; target `DEV` → `dev-s3-events`; both as `devproducer`. Uploads buckets: puts. Photos buckets: deletes |
 | Chart | `helm/silo` from github.com/pgsty/silo at tag `RELEASE.2026-10-26T00-00-00Z` (chart 7.0.3), the same as silo-prod |
 
@@ -31,6 +31,8 @@ operator are archived upstream. It follows the silo-prod pattern (`../silo-prod/
        makes every `mc alias set` fail (it happened on 2026-11-08).
      - `silo-dev-ingress-dev`: `{"access_key": "lcms-ingress-dev", "secret_key": "<long random>"}`
      - `redpanda-dev-users` already exists; Silo uses its `devproducer_password`.
+     - `silo-dev-claude-readonly`: `{"access_key": "silo-dev-claude-ro", "secret_key": "<long random>"}`
+       (HOMELAB-181; letters and digits only, 32 or more)
    - **Sandbox**, path `/`:
      - `silo-dev-ingress-sandbox`: `{"access_key": "lcms-ingress-sandbox", "secret_key": "<long random>"}`
 2. **DNS:** nothing to add. `console.silo.dev…` and `api.silo.dev…` already resolve to Traefik
@@ -93,6 +95,38 @@ client, and it switches in 6(c).
 
 **Not retired here:** the `minio-operator` namespace and the `minio-loki` tenant in `monitoring`.
 Loki still stores its data in that tenant, so it needs its own decision.
+
+## Claude's read-only user (HOMELAB-181)
+
+`silo-dev-claude-ro` lets Claude Code list and read objects in the four buckets from the owner's
+desktop, without a service's credentials. Its policy allows `s3:GetObject`, `s3:ListBucket` and
+`s3:GetBucketLocation` and nothing else. silo-prod has no such user. The desktop side and the rules
+for its use are in lego-collection-workspace, `00-workspace/ops/claude-access/README.md`.
+
+**Adding it** (each step with `lcms-admin`, on the owner's authorization):
+
+| # | Command | Check |
+|---|---|---|
+| 1 | The owner creates `silo-dev-claude-readonly` in Infisical Development (see "Before you start") | |
+| 2 | `kubectl apply -f 02-silo-dev-external-secrets.yaml` | `silo-dev-claude-ro-user` shows `SecretSynced`; the other four are unchanged |
+| 3 | `helm upgrade silo-dev silo/helm/silo -n silo-dev -f 03-silo-dev-values.yaml` (the chart cloned as in commissioning step 3) | The post-upgrade job creates the user and the policy. 3 users, 3 policies |
+
+**Step 3 restarts the four Silo servers, one at a time.** The users and policies are rendered into
+the chart's ConfigMap, and the StatefulSet's pod template carries a checksum of it, so any change to
+`policies:`, `users:`, `buckets:` or `customCommands:` rolls the pods. The store stays available
+through it (one server down of four, EC:4), but a request in flight on the restarting server can
+fail; do not run it during a capture or a photo upload.
+
+**Rotating the key:** the chart's job leaves an existing user's key alone, so: change `secret_key`
+in Infisical, wait for the Secret to sync, remove the user (`mc admin user remove mysilo
+silo-dev-claude-ro`), and run the Helm upgrade again. The job creates the user with the new key; with
+unchanged values the pods do not restart. Then re-run the Windows script from the workspace README.
+
+**Removing it:** delete the user and policy entries from `03-silo-dev-values.yaml` and the
+ExternalSecret from `02-�`, then, because the chart never deletes users or policies:
+`mc admin user remove mysilo silo-dev-claude-ro`, `mc admin policy remove mysilo silo-dev-claude-ro`,
+`kubectl delete externalsecret,secret silo-dev-claude-ro-user -n silo-dev`, and remove the
+Infisical entry.
 
 ## Notes
 
