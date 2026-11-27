@@ -12,7 +12,7 @@ operator are archived upstream. It follows the silo-prod pattern (`../silo-prod/
 | S3 external | `https://api.silo.dev.internal.legohunter.io` |
 | Console | https://console.silo.dev.internal.legohunter.io |
 | Buckets | `lego-uploads-sandbox`, `lego-photos-sandbox`, `lego-uploads-dev`, `lego-photos-dev` (the same layout as silo-prod) |
-| Users | root (Infisical Development `silo-dev-root`); `lcms-ingress-sandbox` (Infisical Sandbox, SANDBOX buckets only); `lcms-ingress-dev` (Infisical Development, DEV buckets only); `silo-dev-claude-ro` (Infisical Development, list and read only on all four buckets, HOMELAB-181) |
+| Users | root (Infisical Development `silo-dev-root`); `lcms-ingress-sandbox` (Infisical Sandbox, SANDBOX buckets only); `lcms-ingress-dev` (Infisical Development, DEV buckets only); `silo-dev-claude-ro` (Infisical Development `silo-dev-claude-readonly`, list and read only on all four buckets, HOMELAB-181) |
 | Events | target `SANDBOX` → redpanda-dev `sandbox-s3-events`; target `DEV` → `dev-s3-events`; both as `devproducer`. Uploads buckets: puts. Photos buckets: deletes |
 | Chart | `helm/silo` from github.com/pgsty/silo at tag `RELEASE.2026-10-26T00-00-00Z` (chart 7.0.3), the same as silo-prod |
 
@@ -31,7 +31,7 @@ operator are archived upstream. It follows the silo-prod pattern (`../silo-prod/
        makes every `mc alias set` fail (it happened on 2026-11-08).
      - `silo-dev-ingress-dev`: `{"access_key": "lcms-ingress-dev", "secret_key": "<long random>"}`
      - `redpanda-dev-users` already exists; Silo uses its `devproducer_password`.
-     - `silo-dev-claude-ro`: `{"access_key": "silo-dev-claude-ro", "secret_key": "<long random>"}`
+     - `silo-dev-claude-readonly`: `{"access_key": "silo-dev-claude-ro", "secret_key": "<long random>"}`
        (HOMELAB-181; letters and digits only, 32 or more)
    - **Sandbox**, path `/`:
      - `silo-dev-ingress-sandbox`: `{"access_key": "lcms-ingress-sandbox", "secret_key": "<long random>"}`
@@ -107,7 +107,7 @@ for its use are in lego-collection-workspace, `00-workspace/ops/claude-access/RE
 
 | # | Command | Check |
 |---|---|---|
-| 1 | The owner creates `silo-dev-claude-ro` in Infisical Development (see "Before you start") | |
+| 1 | The owner creates `silo-dev-claude-readonly` in Infisical Development (see "Before you start") | |
 | 2 | `kubectl apply -f 02-silo-dev-external-secrets.yaml` | `silo-dev-claude-ro-user` shows `SecretSynced`; the other four are unchanged |
 | 3 | `helm upgrade silo-dev silo/helm/silo -n silo-dev -f 03-silo-dev-values.yaml` (the chart cloned as in commissioning step 3) | The post-upgrade job creates the user and the policy. 3 users, 3 policies |
 
