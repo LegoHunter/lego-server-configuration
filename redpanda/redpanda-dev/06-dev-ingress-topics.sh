@@ -37,6 +37,9 @@ TOPICS=(
   dev-bricklink-category-entry
   dev-rebrickable-catalog-entry
   dev-rebrickable-theme-entry
+  # LEGO's wooden toys catalog load (HOMELAB-178): the routed capture file event, and one message per entry.
+  dev-upload-lego-wooden-toys-catalog
+  dev-lego-wooden-toys-catalog-entry
 )
 
 admin_password() {  # prints the admin password (used only in pipes)
