@@ -36,6 +36,9 @@ TOPICS=(
   prod-bricklink-category-entry:3
   prod-rebrickable-catalog-entry:3
   prod-rebrickable-theme-entry:3
+  # LEGO's wooden toys catalog load (HOMELAB-178): the routed capture file event, and one message per entry.
+  prod-upload-lego-wooden-toys-catalog:3
+  prod-lego-wooden-toys-catalog-entry:3
 )
 
 secret() {  # secret <key>: prints one decoded value from redpanda-users (used only in pipes)
