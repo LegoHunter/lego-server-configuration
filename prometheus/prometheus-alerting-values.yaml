@@ -154,6 +154,44 @@ serverFiles:
                 gateway for 15 minutes, so its session alerts cannot fire. Check the pod and its
                 NetworkPolicy (the monitoring namespace must be allowed on port 8080).
 
+      # Hands-off catalog captures in lego-data-ingress (HOMELAB-162): a monthly job per source copies a
+      # catalog from its website into the uploads bucket. Nobody watches a monthly job, so these alerts
+      # are how the owner finds out. The gauges describe the last run that was not a dry run, and reset
+      # to 0 when the pod restarts.
+      # What to do: lego-data-ingress/runbook.md, section "LEGO wooden toys catalog capture".
+      - name: catalog-capture
+        rules:
+          # The last run stopped on a check (unreadable page, too few entries) or failed on a request
+          # or a write. No capture file was written, so nothing was loaded.
+          - alert: CatalogCaptureFailed
+            expr: max by (namespace, source) (catalog_capture_last_run_failed) == 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: A catalog capture stopped or failed
+              description: >-
+                {{ $labels.namespace }}: the last capture of {{ $labels.source }} stopped or failed and
+                wrote no capture file. The reason is in the log line lego_wooden_toys.capture.result
+                and in GET /internal/catalog-capture/lego-wooden-toys. Run it again by hand once the
+                cause is known. Runbook: lego-data-ingress/runbook.md
+
+          # The last run finished but reported something for a person: a picture it could not capture
+          # (picture_problems) or a picture attached to so many entries that it looks like a new
+          # stock placeholder (suspect_shared_pictures).
+          - alert: CatalogCaptureNeedsAttention
+            expr: max by (namespace, source, kind) (catalog_capture_attention_current) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: A catalog capture reported pictures to look at
+              description: >-
+                {{ $labels.namespace }}: the last capture of {{ $labels.source }} reported
+                {{ $value }} {{ $labels.kind }}. The list is in the log line
+                lego_wooden_toys.capture.result and in GET /internal/catalog-capture/lego-wooden-toys.
+                Runbook: lego-data-ingress/runbook.md
+
       - name: mysql-backup
         rules:
           # The nightly dump (CronJob mysql-backup/mysql-backup, 03:00 Eastern) reports each schema
