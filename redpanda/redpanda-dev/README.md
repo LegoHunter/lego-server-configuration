@@ -15,15 +15,20 @@ Known differences from what is deployed, and known issues:
   (the `KAFKA_SASL_PASSWORD` environment variable from the `redpanda-users` Secret).
 - **The superusers Secret was made by hand.** `redpanda-dev-superusers` came from a
   `superusers.txt` file on rasppi5-01; no manifest creates it.
-- **Users, topics and ACLs were made by hand with `rpk`.** Nothing records them except the broker;
-  the commands in `../README.md` are historical and do not match the topics ingress uses today.
+- **Users were made by hand with `rpk`,** and so were the topics and ACLs until scripts took over:
+  `05-dev-s3-events-topic.sh` and `06-dev-ingress-topics.sh` for DEV, `07-sandbox-ingress-topics.sh`
+  for SANDBOX (HOMELAB-178). The commands in `../README.md` are historical and do not match the
+  topics ingress uses today.
 - **The console runs `:latest`** (v3.13.1 on 2026-11-07).
 - **The external-dns annotations do nothing.** No external-dns is deployed; DNS records are added
   by hand in Technitium (`redpanda-dev-0/1/2.dev.internal.legohunter.io` → 10.0.2.101/.102/.100).
 
-## SANDBOX topics, users and ACLs (as of 2026-11-08)
+## SANDBOX and DEV topics, users and ACLs (as of 2026-11-26)
 
-These were made by hand with `rpk`, so this list is the only record.
+**To add a topic:** add it to `07-sandbox-ingress-topics.sh` (SANDBOX) and `06-dev-ingress-topics.sh`
+(DEV), and to `../redpanda-prod/05-redpanda-prod-users-and-topics.sh` (PROD), then run the script
+with an admin context: `KUBE_CONTEXT=lcms-admin ./07-sandbox-ingress-topics.sh`. Each script is
+safe to re-run: it leaves existing topics as they are and re-creating an ACL changes nothing.
 
 - **Users:** `admin` (superuser), `devproducer`, `devconsumer` and `kubernetes-controller`.
   - The `admin` password comes from `superusers.txt` / `redpanda-dev-superusers`.
@@ -35,15 +40,24 @@ These were made by hand with `rpk`, so this list is the only record.
   - `sandbox-s3-events`: 3 partitions. silo-dev's SANDBOX bucket events go here (minio-dev's until
     2026-11-08, HOMELAB-54); ingress consumes it as
     `sandbox-s3-events-group`.
-  - `sandbox-upload-*`, `sandbox-delete-photo` and `sandbox-*-entry`: the routed topics.
-  - `dev-test-topic`.
-  - `dev-s3-events` (HOMELAB-54, created by `05-dev-s3-events-topic.sh`): silo-dev's DEV bucket
-    events, consumed by DEV ingress as `dev-s3-events-group` once HOMELAB-57 wires DEV up.
-  - There are **no DEV (`dev-*`) application topics**: DEV ingress has never been wired up
-    (HOMELAB-28).
+  - `sandbox-upload-*`, `sandbox-delete-photo` and `sandbox-*-entry`: the routed topics. They were
+    made by hand; `07-sandbox-ingress-topics.sh` now lists all of them with their partition counts.
+  - `sandbox-upload-lego-wooden-toys-catalog` and `sandbox-lego-wooden-toys-catalog-entry`
+    (HOMELAB-178, 3 partitions each): the load of LEGO's wooden toys catalog. The first receives the
+    routed bucket event for a capture file, the second carries one message per catalog entry. DEV
+    and PROD have the same pair with their own prefix.
+  - `sandbox-photo-upload-entry` is named in ingress's `application-sandbox.yml` but the broker does
+    not have it (2026-11-26). DEV has `dev-photo-upload-entry`. Not created here; see the note in
+    `07-sandbox-ingress-topics.sh`.
+  - `dev-s3-events` (HOMELAB-54, `05-dev-s3-events-topic.sh`) and the `dev-*` application topics
+    (HOMELAB-57, `06-dev-ingress-topics.sh`), 3 partitions each.
+  - `dev-test-topic`: a leftover test topic. Its consumer group has no ACL.
 - **Retention:** the cluster default, 7 days.
 
 **History**
+- 2026-11-26 (HOMELAB-178): the two wooden toys catalog topics and their ACLs were created in
+  SANDBOX and DEV with the scripts. Before the run, every existing `sandbox-*` topic already had
+  exactly the ACLs `07-sandbox-ingress-topics.sh` creates, so the run changed nothing for them.
 - 2026-11-08 (HOMELAB-53): `sandbox-minio-s3-events` was renamed `sandbox-s3-events`. The new topic
   and its ACLs were created, minio-dev was switched over, and then the old topic, its group and its
   6 ACLs were deleted.
