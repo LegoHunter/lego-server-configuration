@@ -14,7 +14,7 @@
 #                SANDBOX -> sandbox-s3-events   (lego-uploads-sandbox puts, lego-photos-sandbox deletes)
 #                DEV     -> dev-s3-events       (lego-uploads-dev puts, lego-photos-dev deletes)
 #   Users      lcms-ingress-sandbox / lcms-ingress-dev, each limited to its environment's buckets;
-#              claude-readonly, list and read only on all four buckets (HOMELAB-181)
+#              silo-dev-claude-ro, list and read only on all four buckets (HOMELAB-181)
 #   Access     api.silo.dev.internal.legohunter.io and console.silo.dev.internal.legohunter.io
 #              through Traefik (04-silo-dev-tls-and-routes.yaml); the chart's own Ingresses are off
 
@@ -177,7 +177,7 @@ policies:
   # Claude Code's identity (HOMELAB-181): list and read, in SANDBOX and DEV. No put, delete,
   # multipart or bucket administration. Setup and revocation:
   # lego-collection-workspace 00-workspace/ops/claude-access/README.md.
-  - name: claude-readonly
+  - name: silo-dev-claude-ro
     statements:
       - effect: Allow
         resources:
@@ -206,10 +206,10 @@ users:
     existingSecret: silo-dev-ingress-dev-user
     existingSecretKey: secretKey
     policy: lcms-ingress-dev
-  - accessKey: claude-readonly
-    existingSecret: silo-dev-claude-readonly-user
+  - accessKey: silo-dev-claude-ro
+    existingSecret: silo-dev-claude-ro-user
     existingSecretKey: secretKey
-    policy: claude-readonly
+    policy: silo-dev-claude-ro
 
 # Bucket event rules (the chart has no setting for them). --ignore-existing makes re-runs safe.
 # Uploads buckets: puts (every new file is routed by key prefix). Photos buckets: deletes only,
